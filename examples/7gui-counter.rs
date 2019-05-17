@@ -54,7 +54,6 @@ fn main() {
     let mut builder = WindowBuilder::new();
     let mut state = UiState::new();
 
-
     let mut counter = CounterState { count: 0 };
 
     let text_box = TextBox::new("1", 50.).ui(&mut state);
@@ -62,8 +61,6 @@ fn main() {
 
     let button = Button::new("Count".to_string()).ui(&mut state);
     let button_padded = pad(button, &mut state);
-
-
 
     let mut row = Row::new();
     row.set_flex(text_box_padded, 1.0);
@@ -76,18 +73,23 @@ fn main() {
     let panel = column.ui(&[row], &mut state);
 
     state.add_listener(button, move |_: &mut bool, mut ctx| {
-      counter.action(&CounterAction::Increment);
-      ctx.poke(text_box, &mut counter.count.to_string());
+      ctx.poke_up(&mut CounterAction::Increment);
     });
 
-    //LIFETIME PROBS
-    // state.add_listener(text_box, move |value: &mut String, mut ctx| {
-    //   let parsed_value: i32 = match value.trim().parse() {
-    //     Ok(num) => num,
-    //     Err(_) => 0
-    //   };
-    //   counter.action(&CounterAction::Set(parsed_value));
-    // });
+    state.add_listener(text_box, move |value: &mut String, mut ctx| {
+      match value.trim().parse() {
+        Ok(num) => ctx.poke_up(&mut CounterAction::Set(num)),
+        //QUESTION not sure if I should return true or false
+        Err(_) => false 
+      };
+    });
+
+    let forwarder = EventForwarder::<CounterAction>::new().ui(row, &mut state);
+
+    state.add_listener(forwarder, move |action: &mut CounterAction, mut ctx| {
+      counter.action(action);
+      ctx.poke(text_box, &mut counter.count.to_string());
+    });
 
     state.set_root(panel);
     builder.set_handler(Box::new(UiMain::new(state)));
