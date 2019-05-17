@@ -118,7 +118,7 @@ impl Widget for Slider {
 
     fn mouse_moved(&mut self, x: f32, y: f32, ctx: &mut HandlerCtx) {
           if ctx.is_active() {
-                self.value = x as f64 / ctx.layout_ctx.size.0 as f64; 
+                self.value = x as f64 / ctx.layout_ctx.size.0 as f64 - BOX_HEIGHT as f64 / 2.; 
                 ctx.invalidate();
           dbg!(x);
        }
