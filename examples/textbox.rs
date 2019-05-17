@@ -41,6 +41,13 @@ fn main() {
     let slider_1 = pad(Slider::new(1.0).ui(&mut state), &mut state);
     let slider_2 = pad(Slider::new(0.5).ui(&mut state), &mut state);
 
+
+    state.add_listener(slider_1, move |value: &mut f64, mut ctx| {
+        // calc_state.action(action);
+        // ctx.poke(display, &mut calc_state.value);
+        dbg!(value);
+    });
+
     let panel = column.ui(&[text_box1, text_box2, slider_1, slider_2], &mut state);
 
     state.set_root(panel);
