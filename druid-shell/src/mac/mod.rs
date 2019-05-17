@@ -172,68 +172,68 @@ struct ViewClass(*const Class);
 unsafe impl Sync for ViewClass {}
 
 lazy_static! {
-  static ref VIEW_CLASS: ViewClass = unsafe {
-    let mut decl = ClassDecl::new("DruidView", class!(NSView)).expect("View class defined");
-    decl.add_ivar::<*mut c_void>("viewState");
+    static ref VIEW_CLASS: ViewClass = unsafe {
+        let mut decl = ClassDecl::new("DruidView", class!(NSView)).expect("View class defined");
+        decl.add_ivar::<*mut c_void>("viewState");
 
-    decl.add_method(
-      sel!(isFlipped),
-      isFlipped as extern "C" fn(&Object, Sel) -> BOOL,
-    );
-    extern "C" fn isFlipped(_this: &Object, _sel: Sel) -> BOOL {
-      YES
-    }
-    decl.add_method(
-      sel!(acceptsFirstResponder),
-      acceptsFirstResponder as extern "C" fn(&Object, Sel) -> BOOL,
-    );
-    extern "C" fn acceptsFirstResponder(_this: &Object, _sel: Sel) -> BOOL {
-      YES
-    }
-    decl.add_method(sel!(dealloc), dealloc as extern "C" fn(&Object, Sel));
-    extern "C" fn dealloc(this: &Object, _sel: Sel) {
-      eprintln!("view is dealloc'ed");
-      unsafe {
-        let view_state: *mut c_void = *this.get_ivar("viewState");
-        Box::from_raw(view_state as *mut ViewState);
-      }
-    }
-    decl.add_method(
-      sel!(setFrameSize:),
-      set_frame_size as extern "C" fn(&mut Object, Sel, NSSize),
-    );
-    decl.add_method(
-      sel!(mouseDown:),
-      mouse_down as extern "C" fn(&mut Object, Sel, id),
-    );
-    decl.add_method(
-      sel!(mouseUp:),
-      mouse_up as extern "C" fn(&mut Object, Sel, id),
-    );
-    decl.add_method(
-      sel!(mouseMoved:),
-      mouse_move as extern "C" fn(&mut Object, Sel, id),
-    );
-    decl.add_method(
-      sel!(mouseDragged:),
-      mouse_move as extern "C" fn(&mut Object, Sel, id),
-    );
-    decl.add_method(
-      sel!(scrollWheel:),
-      scroll_wheel as extern "C" fn(&mut Object, Sel, id),
-    );
-    decl.add_method(
-      sel!(keyDown:),
-      key_down as extern "C" fn(&mut Object, Sel, id),
-    );
-    decl.add_method(
-      sel!(drawRect:),
-      draw_rect as extern "C" fn(&mut Object, Sel, NSRect),
-    );
-    decl.add_method(sel!(runIdle), run_idle as extern "C" fn(&mut Object, Sel));
-    decl.add_method(sel!(redraw), redraw as extern "C" fn(&mut Object, Sel));
-    ViewClass(decl.register())
-  };
+        decl.add_method(
+            sel!(isFlipped),
+            isFlipped as extern "C" fn(&Object, Sel) -> BOOL,
+        );
+        extern "C" fn isFlipped(_this: &Object, _sel: Sel) -> BOOL {
+            YES
+        }
+        decl.add_method(
+            sel!(acceptsFirstResponder),
+            acceptsFirstResponder as extern "C" fn(&Object, Sel) -> BOOL,
+        );
+        extern "C" fn acceptsFirstResponder(_this: &Object, _sel: Sel) -> BOOL {
+            YES
+        }
+        decl.add_method(sel!(dealloc), dealloc as extern "C" fn(&Object, Sel));
+        extern "C" fn dealloc(this: &Object, _sel: Sel) {
+            eprintln!("view is dealloc'ed");
+            unsafe {
+                let view_state: *mut c_void = *this.get_ivar("viewState");
+                Box::from_raw(view_state as *mut ViewState);
+            }
+        }
+        decl.add_method(
+            sel!(setFrameSize:),
+            set_frame_size as extern "C" fn(&mut Object, Sel, NSSize),
+        );
+        decl.add_method(
+            sel!(mouseDown:),
+            mouse_down as extern "C" fn(&mut Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(mouseUp:),
+            mouse_up as extern "C" fn(&mut Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(mouseMoved:),
+            mouse_move as extern "C" fn(&mut Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(mouseDragged:),
+            mouse_move as extern "C" fn(&mut Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(scrollWheel:),
+            scroll_wheel as extern "C" fn(&mut Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(keyDown:),
+            key_down as extern "C" fn(&mut Object, Sel, id),
+        );
+        decl.add_method(
+            sel!(drawRect:),
+            draw_rect as extern "C" fn(&mut Object, Sel, NSRect),
+        );
+        decl.add_method(sel!(runIdle), run_idle as extern "C" fn(&mut Object, Sel));
+        decl.add_method(sel!(redraw), redraw as extern "C" fn(&mut Object, Sel));
+        ViewClass(decl.register())
+    };
 }
 
 fn make_view(handler: Box<WinHandler>) -> (id, Weak<Mutex<Vec<Box<IdleCallback>>>>) {
