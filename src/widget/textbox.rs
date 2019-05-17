@@ -14,6 +14,8 @@
 
 //! A textbox widget.
 
+use std::any::Any;
+
 use crate::widget::Widget;
 use crate::{
   BoxConstraints, Geometry, HandlerCtx, Id, KeyEvent, KeyVariant, LayoutCtx, LayoutResult,
@@ -34,9 +36,9 @@ pub struct TextBox {
 }
 
 impl TextBox {
-  pub fn new(default_text: Option<String>, width: f64) -> TextBox {
+  pub fn new(default_text: &str, width: f64) -> TextBox {
     TextBox {
-      text: default_text.unwrap_or_else(|| String::new()),
+      text: default_text.to_string(),
       width,
       font: None,
     }
@@ -186,10 +188,20 @@ impl Widget for TextBox {
         _ => {}
       },
     }
-    // update the text string
-    // call invalidate
+    ctx.send_event(self.text.clone());
 
     ctx.invalidate();
     true
   }
+
+  fn poke(&mut self, payload: &mut Any, ctx: &mut HandlerCtx) -> bool {
+        if let Some(text) = payload.downcast_ref::<String>() {
+            self.text = text.to_string();
+            ctx.invalidate();
+            true
+        } else {
+            println!("downcast failed");
+            false
+        }
+    }
 }

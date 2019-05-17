@@ -14,6 +14,8 @@
 
 //! A slider widget.
 
+use std::any::Any;
+
 use crate::widget::Widget;
 use crate::{
     BoxConstraints, Geometry, HandlerCtx, Id, LayoutCtx, LayoutResult, MouseEvent, PaintCtx, Ui,
@@ -118,6 +120,17 @@ impl Widget for Slider {
 
             ctx.send_event(self.value);
             ctx.invalidate();
+        }
+    }
+
+    fn poke(&mut self, payload: &mut Any, ctx: &mut HandlerCtx) -> bool {
+        if let Some(value) = payload.downcast_ref::<f64>() {
+            self.value = *value;
+            ctx.invalidate();
+            true
+        } else {
+            println!("downcast failed");
+            false
         }
     }
 }

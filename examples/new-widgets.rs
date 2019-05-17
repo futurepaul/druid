@@ -35,45 +35,44 @@ fn main() {
 
     let column = Column::new();
 
-    let text_box1 = pad(TextBox::new(None, 50.).ui(&mut state), &mut state);
-    let text_box2 = pad(TextBox::new(None, 500.).ui(&mut state), &mut state);
+    let text_box1 = TextBox::new("1.00", 50.).ui(&mut state);
+    let text_box1_padded = pad(text_box1, &mut state);
 
     let slider_1 = Slider::new(1.0).ui(&mut state);
     let slider_1_padded = pad(slider_1, &mut state);
 
-    let slider_2 = Slider::new(0.5).ui(&mut state);
-    let slider_2_padded = pad(slider_2, &mut state);
-
     let label_1 = Label::new("1.00").ui(&mut state);
     let label_1_padded = pad(label_1, &mut state);
 
-    let label_2 = Label::new("0.50").ui(&mut state);
-    let label_2_padded = pad(label_2, &mut state);
-
-    let progress_bar_1 = ProgressBar::new(0.0).ui(&mut state);
+    let progress_bar_1 = ProgressBar::new(1.0).ui(&mut state);
     let progress_bar_1_padded = pad(progress_bar_1, &mut state);
 
     let mut row_1 = Row::new();
     let mut row_2 = Row::new();
-    let mut row_3 = Row::new();
 
     row_1.set_flex(slider_1_padded, 1.0);
-    row_2.set_flex(slider_2_padded, 1.0);
-    row_3.set_flex(progress_bar_1_padded, 1.0);
+    row_2.set_flex(progress_bar_1_padded, 1.0);
 
     let row_1 = row_1.ui(&[slider_1_padded, label_1_padded], &mut state);
-    let row_2 = row_2.ui(&[slider_2_padded, label_2_padded], &mut state);
-    let row_3 = row_3.ui(&[progress_bar_1_padded], &mut state);
+    let row_2 = row_2.ui(&[progress_bar_1_padded], &mut state);
 
-    let panel = column.ui(&[text_box1, text_box2, row_1, row_2, row_3], &mut state);
+    let panel = column.ui(&[text_box1_padded, row_1, row_2], &mut state);
 
     state.add_listener(slider_1, move |value: &mut f64, mut ctx| {
         ctx.poke(progress_bar_1, value);
+        ctx.poke(text_box1, &mut format!("{:.2}", value));
         ctx.poke(label_1, &mut format!("{:.2}", value));
     });
 
-    state.add_listener(slider_2, move |value: &mut f64, mut ctx| {
-        ctx.poke(label_2, &mut format!("{:.2}", value));
+    state.add_listener(text_box1, move |value: &mut String, mut ctx| {
+      let mut parsed_value: f64 = match value.trim().parse() {
+        Ok(num) => num,
+        Err(_) => 0.
+      };
+      dbg!(parsed_value);
+      ctx.poke(progress_bar_1, &mut parsed_value);
+      ctx.poke(slider_1, &mut parsed_value);
+      ctx.poke(label_1, &mut format!("{:.2}", &mut parsed_value));
     });
 
     state.set_root(panel);

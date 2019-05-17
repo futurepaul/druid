@@ -67,7 +67,8 @@ impl Widget for ProgressBar {
         let (width, height) = geom.size;
         let (x, y) = geom.pos;
 
-        let calculated_bar_width = self.value * width as f64;
+        //Clamp the value between 0 and 1
+        let calculated_bar_width = (self.value).max(0.0).min(1.0) * width as f64;
 
         let rect = Rect::new(
             x as f64,
