@@ -24,6 +24,8 @@ use crate::widget::Widget;
 use crate::{BoxConstraints, Geometry, LayoutResult};
 use crate::{HandlerCtx, Id, LayoutCtx, MouseEvent, PaintCtx, Ui};
 
+const DEFAULT_HEIGHT: f64 = 19.;
+
 /// A text label with no interaction.
 pub struct Label {
     label: String,
@@ -63,7 +65,7 @@ impl Label {
 
 impl Widget for Label {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, geom: &Geometry) {
-        let font_size = 15.0;
+        let font_size = (DEFAULT_HEIGHT - 4.) as f32;
         let text_layout = self.get_layout(paint_ctx.render_ctx, font_size);
         let brush = paint_ctx.render_ctx.solid_brush(0xf0f0eaff).unwrap();
 
@@ -79,7 +81,7 @@ impl Widget for Label {
         _ctx: &mut LayoutCtx,
     ) -> LayoutResult {
         // TODO: measure text properly
-        LayoutResult::Size(bc.constrain((100.0, 17.0)))
+        LayoutResult::Size(bc.constrain((100.0, DEFAULT_HEIGHT as f32)))
     }
 
     fn poke(&mut self, payload: &mut Any, ctx: &mut HandlerCtx) -> bool {

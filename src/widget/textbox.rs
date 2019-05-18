@@ -26,7 +26,7 @@ use kurbo::{Line, Rect};
 use piet::{FillRule, Font, FontBuilder, RenderContext, Text, TextLayout, TextLayoutBuilder};
 use piet_common::{Piet};
 
-const BOX_HEIGHT: f32 = 24.;
+const BOX_HEIGHT: f32 = 19.;
 const BORDER_WIDTH: f32 = 2.;
 
 pub struct TextBox {

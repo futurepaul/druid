@@ -24,7 +24,7 @@ use crate::{
 use kurbo::{Line, Rect};
 use piet::{FillRule, RenderContext};
 
-const BOX_HEIGHT: f64 = 24.;
+const BOX_HEIGHT: f64 = 19.;
 
 pub struct ProgressBar {
     value: f64,

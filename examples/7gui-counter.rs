@@ -68,7 +68,6 @@ fn main() {
     let mut column = Column::new();
     let row = row.ui(&[text_box_padded, button_padded], &mut state);
     let row = pad(row, &mut state);
-    column.set_flex(row, 1.0);
 
     let panel = column.ui(&[row], &mut state);
 
