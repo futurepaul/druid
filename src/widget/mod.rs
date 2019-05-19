@@ -48,6 +48,9 @@ pub use crate::widget::slider::Slider;
 mod progress_bar;
 pub use crate::widget::progress_bar::ProgressBar;
 
+mod checkbox;
+pub use crate::widget::checkbox::Checkbox;
+
 /// The trait implemented by all widgets.
 pub trait Widget {
     /// Paint the widget's appearance into the paint context.

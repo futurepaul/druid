@@ -21,21 +21,19 @@ use crate::{
     BoxConstraints, Geometry, HandlerCtx, Id, LayoutCtx, LayoutResult, MouseEvent, PaintCtx, Ui,
 };
 
-use kurbo::{Line, Rect};
+use kurbo::{Line, Rect, BezPath};
 use piet::{FillRule, RenderContext};
 
 const BOX_HEIGHT: f64 = 19.;
 
-pub struct Slider {
-    value: f64,
-    slider_position: f64,
+pub struct Checkbox {
+    value: bool
 }
 
-impl Slider {
-    pub fn new(initial_value: f64) -> Slider {
-        Slider {
-            value: initial_value,
-            slider_position: 0.
+impl Checkbox {
+    pub fn new(value: bool) -> Checkbox {
+        Checkbox {
+          value 
         }
     }
     pub fn ui(self, ctx: &mut Ui) -> Id {
@@ -43,53 +41,50 @@ impl Slider {
     }
 }
 
-impl Widget for Slider {
+impl Widget for Checkbox {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, geom: &Geometry) {
 
         let background_color = 0x55_55_55_ff;
-        let slider_color = 0xf0f0eaff;
+        let foreground_color = 0xf0f0eaff;
 
         //Paint the background
         let brush = paint_ctx.render_ctx.solid_brush(background_color).unwrap();
 
         let (x, y) = geom.pos;
-        let (width, height) = geom.size;
-        let rect = Rect::new(
-            x as f64,
-            y as f64,
-            x as f64 + width as f64,
-            y as f64 + height as f64,
-        );
-
-        paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
-
-        //Paint the slider
-        let brush = paint_ctx.render_ctx.solid_brush(slider_color).unwrap();
-
-        let (width, height) = geom.size;
-        let (width, height) = (width as f64, height as f64);
-        let (x, y) = geom.pos;
         let (x, y) = (x as f64, y as f64);
-
-        let slider_absolute_position = (width - BOX_HEIGHT) * self.value + BOX_HEIGHT / 2.;
-        let half_box = height / 2.;
-        let full_box = height;
-
-        let mut calculated_position = slider_absolute_position - half_box;
-        if calculated_position < 0. {
-          calculated_position = 0.;
-        } else if (calculated_position + full_box) > width {
-          calculated_position = width - full_box;
-        }
-
+        let (width, height) = geom.size;
         let rect = Rect::new(
-            x + calculated_position,
+            x,
             y,
-            x + calculated_position + full_box,
-            y + height,
+            x + BOX_HEIGHT,
+            y + BOX_HEIGHT,
         );
 
         paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
+
+        //Paint the check 
+        let brush = paint_ctx.render_ctx.solid_brush(foreground_color).unwrap();
+
+        let mut path = BezPath::new();
+        path.moveto((x + 3.0, y + 9.0));
+        path.lineto((x + 8.0, y + 14.0));
+        path.lineto((x + 15.0, y + 4.0));
+
+        paint_ctx.render_ctx.stroke(path, &brush, 2.0, None);
+
+        //Cover the check if false
+        if (self.value == false) {
+            let brush = paint_ctx.render_ctx.solid_brush(background_color).unwrap();
+
+            let rect = Rect::new(
+                x + 2.,
+                y + 2.,
+                x + BOX_HEIGHT - 2.,
+                y + BOX_HEIGHT - 2.,
+            );
+
+            paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
+        }
     }
 
     fn layout(
@@ -99,13 +94,13 @@ impl Widget for Slider {
         _size: Option<(f32, f32)>,
         _ctx: &mut LayoutCtx,
     ) -> LayoutResult {
-        LayoutResult::Size(bc.constrain((bc.max_width, BOX_HEIGHT as f32)))
+        LayoutResult::Size(bc.constrain((BOX_HEIGHT as f32, BOX_HEIGHT as f32)))
     }
 
     fn mouse(&mut self, event: &MouseEvent, ctx: &mut HandlerCtx) -> bool {
-        if event.count == 1 {
+        if event.count > 0 {
             ctx.set_active(true);
-            self.value = ((event.x as f64 - BOX_HEIGHT / 2.) / (ctx.get_geom().size.0 as f64 - BOX_HEIGHT)).max(0.0).min(1.0);
+            self.value = !self.value;
             ctx.send_event(self.value);
         } else {
             ctx.set_active(false);
@@ -114,17 +109,8 @@ impl Widget for Slider {
         true
     }
 
-    fn mouse_moved(&mut self, x: f32, y: f32, ctx: &mut HandlerCtx) {
-        if ctx.is_active() {
-            self.value = ((x as f64 - BOX_HEIGHT / 2.) / (ctx.get_geom().size.0 as f64 - BOX_HEIGHT)).max(0.0).min(1.0);
-
-            ctx.send_event(self.value);
-            ctx.invalidate();
-        }
-    }
-
     fn poke(&mut self, payload: &mut Any, ctx: &mut HandlerCtx) -> bool {
-        if let Some(value) = payload.downcast_ref::<f64>() {
+        if let Some(value) = payload.downcast_ref::<bool>() {
             self.value = *value;
             ctx.invalidate();
             true
