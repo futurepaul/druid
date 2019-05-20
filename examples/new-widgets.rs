@@ -17,7 +17,7 @@
 use druid_shell::platform::WindowBuilder;
 use druid_shell::win_main;
 
-use druid::widget::{Column, EventForwarder, KeyListener, Label, Padding, Row, Slider, TextBox};
+use druid::widget::{Column, EventForwarder, KeyListener, Label, Padding, Row, Slider, TextBox, ProgressBar};
 use druid::{KeyEvent, KeyVariant, UiMain, UiState};
 
 use druid::Id;
@@ -33,12 +33,13 @@ fn main() {
     let mut builder = WindowBuilder::new();
     let mut state = UiState::new();
 
-    let mut column = Column::new();
+    let column = Column::new();
 
     let text_box1 = pad(TextBox::new(None, 50.).ui(&mut state), &mut state);
     let text_box2 = pad(TextBox::new(None, 500.).ui(&mut state), &mut state);
 
     let slider_1 = Slider::new(1.0).ui(&mut state);
+<<<<<<< HEAD:examples/textbox.rs
     let value_label = Label::new("123").ui(&mut state);
 
     state.add_listener(slider_1, move |value: &mut f64, mut ctx| {
@@ -52,6 +53,44 @@ fn main() {
     let slider_2 = pad(Slider::new(0.5).ui(&mut state), &mut state);
 
     let panel = column.ui(&[text_box1, text_box2, slider_1, slider_2, value_label], &mut state);
+=======
+    let slider_1_padded = pad(slider_1, &mut state);
+
+    let slider_2 = Slider::new(0.5).ui(&mut state);
+    let slider_2_padded = pad(slider_2, &mut state);
+
+    let label_1 = Label::new("1.00").ui(&mut state);
+    let label_1_padded = pad(label_1, &mut state);
+
+    let label_2 = Label::new("0.50").ui(&mut state);
+    let label_2_padded = pad(label_2, &mut state);
+
+    let progress_bar_1 = ProgressBar::new(0.0).ui(&mut state);
+    let progress_bar_1_padded = pad(progress_bar_1, &mut state);
+
+    let mut row_1 = Row::new();
+    let mut row_2 = Row::new();
+    let mut row_3 = Row::new();
+
+    row_1.set_flex(slider_1_padded, 1.0);
+    row_2.set_flex(slider_2_padded, 1.0);
+    row_3.set_flex(progress_bar_1_padded, 1.0);
+
+    let row_1 = row_1.ui(&[slider_1_padded, label_1_padded], &mut state);
+    let row_2 = row_2.ui(&[slider_2_padded, label_2_padded], &mut state);
+    let row_3 = row_3.ui(&[progress_bar_1_padded], &mut state);
+
+    let panel = column.ui(&[text_box1, text_box2, row_1, row_2, row_3], &mut state);
+
+    state.add_listener(slider_1, move |value: &mut f64, mut ctx| {
+        ctx.poke(progress_bar_1, value);
+        ctx.poke(label_1, &mut format!("{:.2}", value));
+    });
+
+    state.add_listener(slider_2, move |value: &mut f64, mut ctx| {
+        ctx.poke(label_2, &mut format!("{:.2}", value));
+    });
+>>>>>>> f0148cf3358ecb309746fff1c79c31282f33ed80:examples/new-widgets.rs
 
     state.set_root(panel);
     builder.set_handler(Box::new(UiMain::new(state)));

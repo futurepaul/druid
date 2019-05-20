@@ -22,9 +22,10 @@ use crate::{
 use kurbo::{Line, Rect};
 use piet::{FillRule, RenderContext};
 
-const BOX_HEIGHT: f32 = 24.;
+const BOX_HEIGHT: f64 = 24.;
 
 pub struct Slider {
+<<<<<<< HEAD
   width: Option<f64>,
   value: f64,
   slider_position: f64,
@@ -36,6 +37,21 @@ impl Slider {
       width: None,
       value: initial_value,
       slider_position: 0.,
+=======
+    value: f64,
+    slider_position: f64,
+}
+
+impl Slider {
+    pub fn new(initial_value: f64) -> Slider {
+        Slider {
+            value: initial_value,
+            slider_position: 0.
+        }
+    }
+    pub fn ui(self, ctx: &mut Ui) -> Id {
+        ctx.add(self, &[])
+>>>>>>> f0148cf3358ecb309746fff1c79c31282f33ed80
     }
   }
   pub fn ui(self, ctx: &mut Ui) -> Id {
@@ -44,6 +60,7 @@ impl Slider {
 }
 
 impl Widget for Slider {
+<<<<<<< HEAD
   fn paint(&mut self, paint_ctx: &mut PaintCtx, geom: &Geometry) {
     let background_color = 0x55_55_55_ff;
     let slider_color = 0xf0f0eaff;
@@ -111,10 +128,79 @@ impl Widget for Slider {
       ctx.set_active(false);
     }
     
+=======
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, geom: &Geometry) {
+
+        let background_color = 0x55_55_55_ff;
+        let slider_color = 0xf0f0eaff;
+
+        //Paint the background
+        let brush = paint_ctx.render_ctx.solid_brush(background_color).unwrap();
+
+        let (x, y) = geom.pos;
+        let (width, height) = geom.size;
+        let rect = Rect::new(
+            x as f64,
+            y as f64,
+            x as f64 + width as f64,
+            y as f64 + height as f64,
+        );
+
+        paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
+
+        //Paint the slider
+        let brush = paint_ctx.render_ctx.solid_brush(slider_color).unwrap();
+
+        let (width, height) = geom.size;
+        let (width, height) = (width as f64, height as f64);
+        let (x, y) = geom.pos;
+        let (x, y) = (x as f64, y as f64);
+
+        let slider_absolute_position = (width - BOX_HEIGHT) * self.value + BOX_HEIGHT / 2.;
+        let half_box = height / 2.;
+        let full_box = height;
+
+        let mut calculated_position = slider_absolute_position - half_box;
+        if calculated_position < 0. {
+          calculated_position = 0.;
+        } else if (calculated_position + full_box) > width {
+          calculated_position = width - full_box;
+        }
+
+        let rect = Rect::new(
+            x + calculated_position,
+            y,
+            x + calculated_position + full_box,
+            y + height,
+        );
+
+        paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
+    }
+
+    fn layout(
+        &mut self,
+        bc: &BoxConstraints,
+        _children: &[Id],
+        _size: Option<(f32, f32)>,
+        _ctx: &mut LayoutCtx,
+    ) -> LayoutResult {
+        LayoutResult::Size(bc.constrain((bc.max_width, BOX_HEIGHT as f32)))
+    }
+
+    fn mouse(&mut self, event: &MouseEvent, ctx: &mut HandlerCtx) -> bool {
+        if event.count == 1 {
+            ctx.set_active(true);
+            self.value = ((event.x as f64 - BOX_HEIGHT / 2.) / (ctx.get_geom().size.0 as f64 - BOX_HEIGHT)).max(0.0).min(1.0);
+            ctx.send_event(self.value);
+        } else {
+            ctx.set_active(false);
+        }
+>>>>>>> f0148cf3358ecb309746fff1c79c31282f33ed80
         ctx.invalidate();
     true
   }
 
+<<<<<<< HEAD
   fn mouse_moved(&mut self, x: f32, y: f32, ctx: &mut HandlerCtx) {
       if ctx.is_active() {
         self.value = x as f64 / (ctx.layout_ctx.size.0 as f64 - BOX_HEIGHT as f64 / 2.);
@@ -122,4 +208,14 @@ impl Widget for Slider {
         ctx.invalidate();
       }
   }
+=======
+    fn mouse_moved(&mut self, x: f32, y: f32, ctx: &mut HandlerCtx) {
+        if ctx.is_active() {
+            self.value = ((x as f64 - BOX_HEIGHT / 2.) / (ctx.get_geom().size.0 as f64 - BOX_HEIGHT)).max(0.0).min(1.0);
+
+            ctx.send_event(self.value);
+            ctx.invalidate();
+        }
+    }
+>>>>>>> f0148cf3358ecb309746fff1c79c31282f33ed80
 }
