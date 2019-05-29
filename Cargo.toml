@@ -16,9 +16,9 @@ default-target = "x86_64-pc-windows-msvc"
 travis-ci = { repository = "xi-editor/druid" }
 
 [dependencies]
-piet-common = "0.0.2"
-piet = "0.0.2"
-kurbo = "0.2.1"
+piet-common = { git="https://github.com/futurepaul/piet", branch="feature-raqote-flag", features=["raq"] }
+piet = { git="https://github.com/futurepaul/piet", branch="feature-raqote-flag" }
+kurbo = "0.2.2"
 
 [dependencies.druid-shell]
 path = "druid-shell"

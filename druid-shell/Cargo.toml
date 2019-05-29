@@ -12,8 +12,8 @@ edition = "2018"
 default-target = "x86_64-pc-windows-msvc"
 
 [dependencies]
-piet-common = "0.0.2"
-piet = "0.0.2"
+
+piet = { git="https://github.com/futurepaul/piet", branch="feature-raqote-flag" }
 
 lazy_static = "1.0"
 time = "0.1.39"
@@ -27,11 +27,21 @@ wio = "0.2"
 version = "0.3.6"
 features = ["d2d1_1", "dwrite", "winbase", "libloaderapi", "errhandlingapi", "winuser", "shellscalingapi", "shobjidl", "combaseapi", "synchapi", "dxgi1_3", "dcomp", "d3d11", "dwmapi", "wincon", "fileapi", "processenv", "winbase", "handleapi"]
 
-[target.'cfg(target_os="macos")'.dependencies]
+[target.'cfg(all(target_os="macos", not(features="raqote"))'.dependencies]
 cocoa = "0.18.4"
 objc = "0.2.5"
 core-graphics = "0.17.3"
-cairo-rs = { version = "0.5.0", default_features = false }
+cairo-rs = { version = "0.5.0", default_features = false, optional = true }
+piet-common = { git="https://github.com/futurepaul/piet", branch="feature-raqote-flag", optional = true}
+
+[target.'cfg(features="raqote-render")'.dependencies]
+piet-common = { git="https://github.com/futurepaul/piet", branch="feature-raqote-flag", features=["raq"], optional = true }
+raqote = { git="https://github.com/jrmuizel/raqote/", optional = true}
+
+[features]
+default = ["cairo-render"]
+cairo-render = ["cairo-rs", "piet-common"]
+raqote-render = ["raqote", "piet-common"]
 
 [dev-dependencies]
-kurbo = "0.2.1"
+kurbo = "0.2.2"
