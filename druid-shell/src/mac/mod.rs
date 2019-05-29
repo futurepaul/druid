@@ -38,10 +38,22 @@ use std::ffi::OsString;
 use std::mem;
 use std::sync::{Arc, Mutex, Weak};
 
+#[cfg(feature = "cairo-render")]
 use cairo::{Context, QuartzSurface};
 
-use piet::RenderContext;
-use piet_common::Piet;
+#[cfg(feature = "raqote-render")]
+use raqote::DrawTarget;
+#[cfg(feature = "raqote-render")]
+use core_graphics::{
+    geometry::{CGRect, CGSize, CGPoint},
+    context::{CGContext, CGContextRef},
+    image::CGImageAlphaInfo,
+    color_space::CGColorSpace
+};
+
+
+use piet::{ImageFormat, RenderContext};
+use piet_common::{Piet, Device, BitmapTarget};
 
 use crate::platform::dialog::{FileDialogOptions, FileDialogType};
 use crate::util::make_nsstring;
@@ -349,12 +361,14 @@ extern "C" fn key_down(this: &mut Object, _: Sel, nsevent: id) {
     }
 }
 
+#[cfg(feature = "cairo-render")]
 extern "C" fn draw_rect(this: &mut Object, _: Sel, dirtyRect: NSRect) {
     unsafe {
         let context: id = msg_send![class![NSGraphicsContext], currentContext];
         // TODO: probably should use a better type than void pointer, but it's not obvious what's best.
         // cairo_sys::CGContextRef would be better documentation-wise, but it's a type alias.
         let cgcontext: *mut c_void = msg_send![context, CGContext];
+
         // TODO: use width and height from view size
         let frame = NSView::frame(this as *mut _);
         let width = frame.size.width as u32;
@@ -372,6 +386,64 @@ extern "C" fn draw_rect(this: &mut Object, _: Sel, dirtyRect: NSRect) {
             eprintln!("Error: {}", e);
         }
         // TODO: log errors
+
+        if anim {
+            // TODO: synchronize with screen refresh rate using CVDisplayLink instead.
+            let () = msg_send!(this as *const _, performSelectorOnMainThread: sel!(redraw)
+                withObject: nil waitUntilDone: NO);
+        }
+
+        let superclass = msg_send![this, superclass];
+        let () = msg_send![super(this, superclass), drawRect: dirtyRect];
+    }
+}
+
+#[cfg(feature = "raqote-render")]
+extern "C" fn draw_rect(this: &mut Object, _: Sel, dirtyRect: NSRect) {
+    unsafe {
+        let context: id = msg_send![class![NSGraphicsContext], currentContext];
+        // TODO: probably should use a better type than void pointer, but it's not obvious what's best.
+        // cairo_sys::CGContextRef would be better documentation-wise, but it's a type alias.
+        let cgcontext: *mut c_void = msg_send![context, CGContext];
+        let cgcontext = &mut *(cgcontext as *mut CGContextRef);
+        // TODO: use width and height from view size
+        let frame = NSView::frame(this as *mut _);
+        let width = frame.size.width as usize;
+        let height = frame.size.height as usize;
+
+        // REPLACE THIS
+        // let cairo_surface =
+        //     QuartzSurface::create_for_cg_context(cgcontext, width, height).expect("cairo surface");
+        // let mut cairo_ctx = Context::new(&cairo_surface);
+        // cairo_ctx.set_source_rgb(0.0, 0.5, 0.0);
+        // cairo_ctx.paint();
+        let device = Device::new().unwrap();
+        let mut bitmap = device.bitmap_target(width, height, 1.0).unwrap();
+        let mut piet_ctx = bitmap.render_context();
+
+        // let mut piet_ctx = Piet::new(&mut render_context.draw_target);
+        let view_state: *mut c_void = *this.get_ivar("viewState");
+        let view_state = &mut *(view_state as *mut ViewState);
+        let anim = (*view_state).handler.paint(&mut piet_ctx);
+        if let Err(e) = piet_ctx.finish() {
+            eprintln!("Error: {}", e);
+        }
+        // data: Option<*mut c_void>
+        // TODO: log errors
+        let mut pixel_data = bitmap.into_raw_pixels(ImageFormat::RgbaPremul).unwrap();
+        let bitmap_context = CGContext::create_bitmap_context(Some(pixel_data.as_mut_ptr() as *mut _),
+            width,
+            height,
+            8,
+            4 * width,
+            // Not sure about this
+            &CGColorSpace::create_device_rgb(),
+            CGImageAlphaInfo::CGImageAlphaPremultipliedLast as u32);
+
+        let image = bitmap_context.create_image().unwrap();
+        let rect = CGRect::new(&CGPoint::new(0., -(height as f64)), &CGSize::new(width as f64, -(height as f64)));
+
+        cgcontext.draw_image(rect, &image);
 
         if anim {
             // TODO: synchronize with screen refresh rate using CVDisplayLink instead.
