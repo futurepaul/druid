@@ -78,7 +78,6 @@ fn main() {
     state.add_listener(text_box, move |value: &mut String, mut ctx| {
       match value.trim().parse() {
         Ok(num) => ctx.poke_up(&mut CounterAction::Set(num)),
-        //QUESTION not sure if I should return true or false
         Err(_) => false 
       };
     });
