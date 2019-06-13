@@ -17,10 +17,8 @@
 use druid_shell::platform::WindowBuilder;
 use druid_shell::win_main;
 
-use druid::widget::{
-    Column, EventForwarder, KeyListener, Label, Padding, ProgressBar, Row, Slider, TextBox,
-};
-use druid::{KeyEvent, KeyVariant, UiMain, UiState};
+use druid::widget::{Checkbox, Column, Label, Padding, ProgressBar, Row, Slider, TextBox};
+use druid::{UiMain, UiState};
 
 use druid::Id;
 
@@ -37,45 +35,52 @@ fn main() {
 
     let column = Column::new();
 
-    let text_box1 = pad(TextBox::new(None, 50.).ui(&mut state), &mut state);
-    let text_box2 = pad(TextBox::new(None, 500.).ui(&mut state), &mut state);
+    let text_box = pad(TextBox::new(None, 50.).ui(&mut state), &mut state);
 
-    let slider_1 = Slider::new(1.0).ui(&mut state);
-    let slider_1_padded = pad(slider_1, &mut state);
+    let slider = Slider::new(1.0).ui(&mut state);
+    let slider_padded = pad(slider, &mut state);
 
-    let slider_2 = Slider::new(0.5).ui(&mut state);
-    let slider_2_padded = pad(slider_2, &mut state);
+    let label = Label::new("1.00").ui(&mut state);
+    let label_padded = pad(label, &mut state);
 
-    let label_1 = Label::new("1.00").ui(&mut state);
-    let label_1_padded = pad(label_1, &mut state);
+    let progress_bar = ProgressBar::new(0.0).ui(&mut state);
+    let progress_bar_padded = pad(progress_bar, &mut state);
 
-    let label_2 = Label::new("0.50").ui(&mut state);
-    let label_2_padded = pad(label_2, &mut state);
+    let checkbox_label = Label::new("true").ui(&mut state);
+    let checkbox_label_padded = pad(checkbox_label, &mut state);
 
-    let progress_bar_1 = ProgressBar::new(0.0).ui(&mut state);
-    let progress_bar_1_padded = pad(progress_bar_1, &mut state);
+    let checkbox = Checkbox::new(true).ui(&mut state);
+    let checkbox_padded = pad(checkbox, &mut state);
 
     let mut row_1 = Row::new();
     let mut row_2 = Row::new();
     let mut row_3 = Row::new();
 
-    row_1.set_flex(slider_1_padded, 1.0);
-    row_2.set_flex(slider_2_padded, 1.0);
-    row_3.set_flex(progress_bar_1_padded, 1.0);
+    row_1.set_flex(slider_padded, 1.0);
+    row_2.set_flex(progress_bar_padded, 1.0);
+    row_3.set_flex(checkbox_label_padded, 1.0);
 
-    let row_1 = row_1.ui(&[slider_1_padded, label_1_padded], &mut state);
-    let row_2 = row_2.ui(&[slider_2_padded, label_2_padded], &mut state);
-    let row_3 = row_3.ui(&[progress_bar_1_padded], &mut state);
+    let row_1 = row_1.ui(&[slider_padded, label_padded], &mut state);
+    let row_2 = row_2.ui(&[progress_bar_padded], &mut state);
+    let row_3 = row_3.ui(&[checkbox_padded, checkbox_label_padded], &mut state);
 
-    let panel = column.ui(&[text_box1, text_box2, row_1, row_2, row_3], &mut state);
+    let panel = column.ui(&[text_box, row_1, row_2, row_3], &mut state);
 
-    state.add_listener(slider_1, move |value: &mut f64, mut ctx| {
-        ctx.poke(progress_bar_1, value);
-        ctx.poke(label_1, &mut format!("{:.2}", value));
+    state.add_listener(slider, move |value: &mut f64, mut ctx| {
+        ctx.poke(progress_bar, value);
+        ctx.poke(label, &mut format!("{:.2}", value));
+
+        if *value == 1.0 as f64 {
+            ctx.poke(checkbox, &mut true);
+            ctx.poke(checkbox_label, &mut "true".to_string());
+        } else {
+            ctx.poke(checkbox, &mut false);
+            ctx.poke(checkbox_label, &mut "false".to_string());
+        }
     });
 
-    state.add_listener(slider_2, move |value: &mut f64, mut ctx| {
-        ctx.poke(label_2, &mut format!("{:.2}", value));
+    state.add_listener(checkbox, move |value: &mut bool, mut ctx| {
+        ctx.poke(checkbox_label, &mut value.to_string());
     });
 
     state.set_root(panel);
