@@ -14,6 +14,8 @@
 
 //! A textbox widget.
 
+use std::any::Any;
+
 use crate::widget::Widget;
 use crate::{
     BoxConstraints, Geometry, HandlerCtx, Id, KeyEvent, KeyVariant, LayoutCtx, LayoutResult,
@@ -189,5 +191,16 @@ impl Widget for TextBox {
 
         ctx.invalidate();
         true
+    }
+
+    fn poke(&mut self, payload: &mut Any, ctx: &mut HandlerCtx) -> bool {
+        if let Some(text) = payload.downcast_ref::<String>() {
+            self.text = text.to_string();
+            ctx.invalidate();
+            true
+        } else {
+            println!("downcast failed");
+            false
+        }
     }
 }
