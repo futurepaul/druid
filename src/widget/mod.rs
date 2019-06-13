@@ -51,6 +51,9 @@ pub use crate::widget::progress_bar::ProgressBar;
 mod checkbox;
 pub use crate::widget::checkbox::Checkbox;
 
+mod scroll_column;
+pub use crate::widget::scroll_column::ScrollColumn;
+
 /// The trait implemented by all widgets.
 pub trait Widget {
     /// Paint the widget's appearance into the paint context.
