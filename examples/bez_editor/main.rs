@@ -14,26 +14,41 @@
 
 //! A simple bezier path editor.
 
-use druid::kurbo::{Point, Size};
+use druid::kurbo::{Point, Rect, Size};
 use druid::piet::{Color, RenderContext};
+use druid::shell::window::Cursor;
 use druid::shell::{runloop, WindowBuilder};
 use std::sync::Arc;
 
 use druid::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, KeyCode, LayoutCtx, PaintCtx,
-    UiMain, UiState, UpdateCtx, Widget,
+    UiMain, UiState, UpdateCtx, Widget, WidgetPod,
 };
 
 mod draw;
 mod pen;
+mod toolbar;
 
 use draw::{draw_active_path, draw_inactive_path};
 use pen::Pen;
+use toolbar::{Toolbar, ToolbarState};
 
 const BG_COLOR: Color = Color::rgb24(0xfb_fb_fb);
+const TOOLBAR_POSITION: Point = Point::new(8., 8.);
+
 pub(crate) const MIN_POINT_DISTANCE: f64 = 3.0;
 
-struct Canvas;
+struct Canvas {
+    toolbar: WidgetPod<ToolbarState, Toolbar>,
+}
+
+impl Canvas {
+    fn new() -> Self {
+        Canvas {
+            toolbar: WidgetPod::new(Toolbar::default()),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 enum PathSeg {
@@ -63,6 +78,7 @@ struct CanvasState {
     tool: Pen,
     /// The paths in the canvas
     contents: Contents,
+    toolbar: ToolbarState,
 }
 
 impl CanvasState {
@@ -70,6 +86,7 @@ impl CanvasState {
         CanvasState {
             tool: Pen::new(),
             contents: Contents::default(),
+            toolbar: ToolbarState::basic(),
         }
     }
 
@@ -171,7 +188,9 @@ impl Path {
 // It should be able to get this from a derive macro.
 impl Data for CanvasState {
     fn same(&self, other: &Self) -> bool {
-        self.contents.same(&other.contents) && self.tool == other.tool
+        self.contents.same(&other.contents)
+            && self.toolbar.same(&other.toolbar)
+            && self.tool == other.tool
     }
 }
 
@@ -191,7 +210,13 @@ impl Data for Path {
 }
 
 impl Widget<CanvasState> for Canvas {
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, _: &BaseState, data: &CanvasState, _env: &Env) {
+    fn paint(
+        &mut self,
+        paint_ctx: &mut PaintCtx,
+        _base: &BaseState,
+        data: &CanvasState,
+        _env: &Env,
+    ) {
         paint_ctx.render_ctx.clear(BG_COLOR);
         for path in data.contents.paths.iter() {
             draw_inactive_path(path, paint_ctx);
@@ -200,15 +225,20 @@ impl Widget<CanvasState> for Canvas {
         if let Some(active) = data.contents.active_path.as_ref() {
             draw_active_path(active, &data.tool, paint_ctx);
         }
+        self.toolbar
+            .paint_with_offset(paint_ctx, &data.toolbar, _env);
     }
 
     fn layout(
         &mut self,
-        _layout_ctx: &mut LayoutCtx,
+        ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        _data: &CanvasState,
-        _env: &Env,
+        data: &CanvasState,
+        env: &Env,
     ) -> Size {
+        let toolbar_size = self.toolbar.layout(ctx, bc, &data.toolbar, env);
+        self.toolbar
+            .set_layout_rect(Rect::from_origin_size(TOOLBAR_POSITION, toolbar_size));
         bc.max()
     }
 
@@ -219,27 +249,53 @@ impl Widget<CanvasState> for Canvas {
         data: &mut CanvasState,
         _env: &Env,
     ) -> Option<Action> {
-        let CanvasState { tool, contents } = data;
-
-        // first we try to handle things at the top level, and then we pass
-        // them to the tool.
-        //TODO: move this into a separate function.
+        // first check for top-level commands
         match event {
             Event::KeyUp(key) if key.key_code == KeyCode::Escape => {
                 data.remove_top_path();
-                ctx.invalidate();
-                return None;
+                ctx.set_handled();
             }
-            _ => (),
+            Event::KeyUp(key) if data.toolbar.idx_for_key(key).is_some() => {
+                let idx = data.toolbar.idx_for_key(key).unwrap();
+                data.toolbar.set_selected(idx);
+                ctx.set_handled();
+            }
+            other => {
+                self.toolbar.event(other, ctx, &mut data.toolbar, _env);
+            }
         }
 
-        if tool.event(contents, event) {
+        // then pass the event to the active tool
+        let CanvasState { tool, contents, .. } = data;
+        if ctx.is_handled() | tool.event(contents, event) {
             ctx.invalidate();
         }
         None
     }
 
-    fn update(&mut self, _: &mut UpdateCtx, _: Option<&CanvasState>, _: &CanvasState, _: &Env) {}
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        old: Option<&CanvasState>,
+        new: &CanvasState,
+        _env: &Env,
+    ) {
+        // update the mouse icon if the active tool has changed
+        let old = match old {
+            Some(old) => old,
+            None => return,
+        };
+
+        if old.toolbar.selected_idx() != new.toolbar.selected_idx() {
+            match new.toolbar.selected_item().name.as_str() {
+                "select" => ctx.window().set_cursor(&Cursor::Arrow),
+                "pen" => ctx.window().set_cursor(&Cursor::Crosshair),
+                other => eprintln!("unknown tool '{}'", other),
+            }
+            ctx.invalidate();
+        }
+        self.toolbar.update(ctx, &new.toolbar, _env);
+    }
 }
 
 fn main() {
@@ -248,7 +304,7 @@ fn main() {
     let mut run_loop = runloop::RunLoop::new();
     let mut builder = WindowBuilder::new();
     let state = CanvasState::new();
-    let mut state = UiState::new(Canvas, state);
+    let mut state = UiState::new(Canvas::new(), state);
     state.set_active(true);
     builder.set_title("Paths");
     builder.set_handler(Box::new(UiMain::new(state)));
