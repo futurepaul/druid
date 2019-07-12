@@ -31,19 +31,17 @@ impl Pen {
             return false;
         }
 
-        // are we currently drawing?
-        if let Some(active) = canvas.active_path.as_mut() {
-            // does this close the path?
-            if active.start.distance(event.pos) < MIN_POINT_DISTANCE {
-                active.add_point(active.start);
-                active.close();
+        if let Some(start) = canvas.active_path_mut().map(|p| p.start) {
+            // if we're close to the start just use the start, which closes the path.
+            if start.distance(event.pos) < MIN_POINT_DISTANCE {
+                canvas.add_point(start);
             } else {
-                active.add_point(event.pos);
+                canvas.add_point(event.pos);
             }
-        // we're not drawing, start a new path
         } else {
-            canvas.active_path = Some(Path::start(event.pos));
+            canvas.add_point(event.pos);
         }
+
         self.0 = Mouse::Down(event.pos);
         true
     }
@@ -53,9 +51,7 @@ impl Pen {
             return false;
         }
 
-        if let Some(active) = canvas.active_path.take() {
-            canvas.paths_mut().push(active);
-        }
+        canvas.selection_mut().clear();
         true
     }
 
@@ -79,9 +75,7 @@ impl Pen {
             }
         };
         if let Mouse::Drag { start, current } = self.0 {
-            if let Some(active) = canvas.active_path.as_mut() {
-                active.update_for_drag(start, current);
-            }
+            canvas.update_for_drag(start, current);
             true
         } else {
             false
@@ -92,13 +86,8 @@ impl Pen {
         if event.button != MouseButton::Left {
             return false;
         }
-        if canvas
-            .active_path
-            .as_ref()
-            .map(|p| p.closed)
-            .unwrap_or(false)
-        {
-            canvas.finish_active();
+        if canvas.active_path_mut().map(|p| p.closed).unwrap_or(false) {
+            canvas.selection_mut().clear();
         }
         self.0 = Mouse::Up(event.pos);
         true

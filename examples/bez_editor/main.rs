@@ -29,7 +29,7 @@ mod draw;
 mod pen;
 mod toolbar;
 
-use draw::{draw_active_path, draw_inactive_path};
+use draw::draw_paths;
 use pen::Pen;
 use toolbar::{Toolbar, ToolbarState};
 
@@ -91,16 +91,15 @@ impl CanvasState {
     }
 
     fn remove_top_path(&mut self) {
-        if self.contents.active_path.take().is_none() {
-            Arc::make_mut(&mut self.contents.paths).pop();
-        }
+        Arc::make_mut(&mut self.contents.paths).pop();
     }
 }
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Contents {
     paths: Arc<Vec<Path>>,
-    active_path: Option<Path>,
+    /// Selected points, using overall idx as an id.
+    selection: Arc<Vec<usize>>,
 }
 
 impl Contents {
@@ -108,10 +107,72 @@ impl Contents {
         Arc::make_mut(&mut self.paths)
     }
 
-    fn finish_active(&mut self) {
-        if let Some(active) = self.active_path.take() {
-            self.paths_mut().push(active);
+    pub(crate) fn selection_mut(&mut self) -> &mut Vec<usize> {
+        Arc::make_mut(&mut self.selection)
+    }
+
+    /// Return the index of the path that is currently drawing. To be currently
+    /// drawing, there must be a single currently selected point.
+    fn active_path_idx(&self) -> Option<usize> {
+        if self.selection.len() == 1 {
+            let mut points = 0;
+            let mut path_idx = 0;
+            for path in self.paths.iter() {
+                points += path.num_points();
+                if points > self.selection[0] {
+                    break;
+                }
+                path_idx += 1;
+            }
+            Some(path_idx)
+        } else {
+            None
         }
+    }
+
+    pub(crate) fn active_path_mut(&mut self) -> Option<&mut Path> {
+        match self.active_path_idx() {
+            Some(idx) => self.paths_mut().get_mut(idx),
+            None => None,
+        }
+    }
+
+    pub(crate) fn new_path(&mut self, start: Point) {
+        let idx = self.paths.iter().map(Path::num_points).sum();
+        self.paths_mut().push(Path::start(start));
+        self.selection_mut().clear();
+        self.selection_mut().push(idx);
+    }
+
+    pub(crate) fn add_point(&mut self, point: Point) {
+        let new_points = match self.active_path_mut() {
+            Some(path) => {
+                let result = if path.trailing_off_curve.is_some() {
+                    3
+                } else {
+                    1
+                };
+                path.add_point(point);
+                if path.start == point {
+                    path.close();
+                }
+                result
+            }
+            None => return self.new_path(point),
+        };
+
+        self.selection_mut()[0] += new_points;
+        eprintln!("SEL: {}", self.selection[0]);
+    }
+
+    pub(crate) fn update_for_drag(&mut self, start: Point, end: Point) {
+        let new_points = self
+            .active_path_mut()
+            .map(|p| p.update_for_drag(start, end))
+            .unwrap_or(0);
+
+        self.selection_mut()[0] += new_points;
+        eprintln!("SEL: {}", self.selection[0]);
     }
 }
 
@@ -145,8 +206,10 @@ impl Path {
     }
 
     /// Update this path in response to the user click-dragging
-    fn update_for_drag(&mut self, start: Point, current: Point) {
+    /// Returns the number of new points added by this gesture.
+    fn update_for_drag(&mut self, start: Point, current: Point) -> usize {
         // if necessary, convert the last path segment to a cubic.
+        let mut result = 0;
         let num_segs = self.segs.len();
         let prev_end = if num_segs >= 2 {
             self.segs.iter().nth(num_segs - 2).unwrap().end()
@@ -160,6 +223,7 @@ impl Path {
                 b2: start,
                 end: start,
             };
+            result = 2;
         }
 
         // if this is not the first point, adjust the previous point's second control point.
@@ -167,7 +231,11 @@ impl Path {
             *b2 = start - (current - start);
         }
 
+        if self.trailing_off_curve.is_none() {
+            result += 1;
+        }
         self.trailing_off_curve = Some(current);
+        result
     }
 
     fn push_cubic(&mut self, b1: Point, b2: Point, end: Point) {
@@ -183,6 +251,23 @@ impl Path {
     fn close(&mut self) {
         self.closed = true;
     }
+
+    fn num_points(&self) -> usize {
+        let mut total = 1; // start point
+        for seg in self.segs.iter() {
+            total += match seg {
+                PathSeg::Cubic { .. } => 3,
+                PathSeg::Straight { .. } => 1,
+            };
+        }
+        if self.closed && !self.segs.is_empty() {
+            total -= 1;
+        }
+        if self.trailing_off_curve.is_some() {
+            total += 1;
+        }
+        total
+    }
 }
 
 // It should be able to get this from a derive macro.
@@ -196,7 +281,7 @@ impl Data for CanvasState {
 
 impl Data for Contents {
     fn same(&self, other: &Self) -> bool {
-        self.paths.same(&other.paths) && self.active_path == other.active_path
+        self.paths.same(&other.paths) && self.selection.same(&other.selection)
     }
 }
 
@@ -218,13 +303,7 @@ impl Widget<CanvasState> for Canvas {
         _env: &Env,
     ) {
         paint_ctx.render_ctx.clear(BG_COLOR);
-        for path in data.contents.paths.iter() {
-            draw_inactive_path(path, paint_ctx);
-        }
-
-        if let Some(active) = data.contents.active_path.as_ref() {
-            draw_active_path(active, &data.tool, paint_ctx);
-        }
+        draw_paths(&data.contents.paths, &data.contents.selection, paint_ctx);
         self.toolbar
             .paint_with_offset(paint_ctx, &data.toolbar, _env);
     }
