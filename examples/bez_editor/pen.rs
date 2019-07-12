@@ -2,8 +2,9 @@
 
 use druid::kurbo::Point;
 use druid::{Event, MouseButton, MouseEvent};
+use std::any::Any;
 
-use super::{Contents, Mouse, Path, Tool, MIN_POINT_DISTANCE};
+use super::{Contents, Mouse, Tool, MIN_POINT_DISTANCE};
 
 /// The state of the pen.
 #[derive(Debug, Clone, PartialEq)]
@@ -18,6 +19,22 @@ impl Tool for Pen {
             Event::MouseMoved(mouse) => self.mouse_moved(data, mouse),
             _ => false,
         }
+    }
+
+    fn boxed_clone(&self) -> Box<dyn Tool> {
+        Box::new(self.clone())
+    }
+
+    fn same_impl(&self, other: &dyn Any) -> bool {
+        if let Some(other) = other.downcast_ref::<Pen>() {
+            self.0 == other.0
+        } else {
+            false
+        }
+    }
+
+    fn name(&self) -> &str {
+        "pen"
     }
 }
 

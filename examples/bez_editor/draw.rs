@@ -1,6 +1,6 @@
 //! Drawing algorithms and helpers
 
-use super::{Path, PathSeg, Pen};
+use super::{Path, PathSeg};
 use druid::kurbo::{BezPath, Circle, Line, Point};
 use druid::piet::{Color, FillRule::NonZero, RenderContext};
 use druid::PaintCtx;

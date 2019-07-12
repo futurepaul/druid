@@ -14,6 +14,9 @@
 
 //! A simple bezier path editor.
 
+use std::any::Any;
+use std::fmt::Debug;
+
 use druid::kurbo::{Point, Rect, Size};
 use druid::piet::{Color, RenderContext};
 use druid::shell::window::Cursor;
@@ -27,10 +30,12 @@ use druid::{
 
 mod draw;
 mod pen;
+mod select;
 mod toolbar;
 
 use draw::draw_paths;
 use pen::Pen;
+use select::Select;
 use toolbar::{Toolbar, ToolbarState};
 
 const BG_COLOR: Color = Color::rgb24(0xfb_fb_fb);
@@ -75,7 +80,7 @@ struct Path {
 
 #[derive(Debug, Clone)]
 struct CanvasState {
-    tool: Pen,
+    tool: Box<dyn Tool>,
     /// The paths in the canvas
     contents: Contents,
     toolbar: ToolbarState,
@@ -84,7 +89,7 @@ struct CanvasState {
 impl CanvasState {
     fn new() -> Self {
         CanvasState {
-            tool: Pen::new(),
+            tool: Box::new(Pen::new()),
             contents: Contents::default(),
             toolbar: ToolbarState::basic(),
         }
@@ -92,6 +97,18 @@ impl CanvasState {
 
     fn remove_top_path(&mut self) {
         Arc::make_mut(&mut self.contents.paths).pop();
+    }
+
+    fn update_tool_if_necessary(&mut self) {
+        if self.toolbar.selected_item().name == self.tool.name() {
+            return;
+        }
+
+        let new_tool: Box<dyn Tool> = match self.toolbar.selected_item().name.as_str() {
+            "pen" => Box::new(Pen::new()),
+            _ => Box::new(Select::new()),
+        };
+        self.tool = new_tool;
     }
 }
 
@@ -185,8 +202,28 @@ pub(crate) enum Mouse {
 
 /// A trait for editor tools (selection, pen, etc). More concretely, this abstracts
 /// away different sets of mouse and keyboard handling behaviour.
-pub(crate) trait Tool {
+pub(crate) trait Tool: Debug + Any {
+    /// Called when the tool should process some event. The tool should modify
+    /// `data` as necessary, and return `true` if the event is handled.
     fn event(&mut self, data: &mut Contents, event: &Event) -> bool;
+    /// The current position of the tool. Used to set the new tool's position
+    /// when the tool changes.
+
+    fn boxed_clone(&self) -> Box<dyn Tool>;
+    fn same_impl(&self, other: &dyn Any) -> bool;
+    fn name(&self) -> &str;
+}
+
+impl Clone for Box<dyn Tool> {
+    fn clone(&self) -> Self {
+        self.boxed_clone()
+    }
+}
+
+impl Data for Box<dyn Tool> {
+    fn same(&self, other: &Box<dyn Tool>) -> bool {
+        self.same_impl(other)
+    }
 }
 
 impl Path {
@@ -273,9 +310,8 @@ impl Path {
 // It should be able to get this from a derive macro.
 impl Data for CanvasState {
     fn same(&self, other: &Self) -> bool {
-        self.contents.same(&other.contents)
-            && self.toolbar.same(&other.toolbar)
-            && self.tool == other.tool
+        self.contents.same(&other.contents) && self.toolbar.same(&other.toolbar)
+        //&& self.tool == other.tool
     }
 }
 
@@ -349,6 +385,8 @@ impl Widget<CanvasState> for Canvas {
         if ctx.is_handled() | tool.event(contents, event) {
             ctx.invalidate();
         }
+
+        data.update_tool_if_necessary();
         None
     }
 
