@@ -23,7 +23,6 @@ use crate::{
     UpdateCtx, Widget,
 };
 
-const BOX_HEIGHT: f64 = 24.;
 const BACKGROUND_COLOR: Color = Color::rgb24(0x55_55_55);
 const BAR_COLOR: Color = Color::rgb24(0xf0_f0_ea);
 
@@ -48,17 +47,8 @@ const BAR_COLOR: Color = Color::rgb24(0xf0_f0_ea);
 //     }
 // }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ProgressBar {
-    value: f64
-}
-
-impl ProgressBar {
-    pub fn new(value: f64) -> ProgressBar {
-        ProgressBar {
-            value
-        }
-    }
 }
 
 impl Widget<f64> for ProgressBar {
@@ -69,20 +59,16 @@ impl Widget<f64> for ProgressBar {
         data: &f64,
         _env: &Env,
     ) {
-
+        let clamped = data.max(0.0).min(1.0);
         let rect = base_state.layout_rect.with_origin(Point::ORIGIN);
 
         //Paint the background
         let brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_COLOR);
-        
-
         paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
 
         //Paint the bar
         let brush = paint_ctx.render_ctx.solid_brush(BAR_COLOR);
-
-        let calculated_bar_width = self.value * rect.width();
-
+        let calculated_bar_width = clamped * rect.width();
         let rect = rect.with_size(Size::new(calculated_bar_width, rect.height()));
         paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
     }
@@ -91,10 +77,10 @@ impl Widget<f64> for ProgressBar {
         &mut self,
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        data: &f64,
+        _data: &f64,
         _env: &Env
     ) -> Size {
-        bc.constrain((bc.max.width, BOX_HEIGHT))
+        bc.constrain((bc.max.width, bc.max.height))
     }
 
     fn event(
@@ -111,12 +97,10 @@ impl Widget<f64> for ProgressBar {
         &mut self,
         ctx: &mut UpdateCtx,
         _old_data: Option<&f64>,
-        data: &f64,
+        _data: &f64,
         _env: &Env,
     ) {
-        self.value = *data;
+        // self.value = data.max(0.0).min(1.0);
         ctx.invalidate();
-        // self.set_value(data.value);
-        //Or should it be self.value = data.value
     }
 }

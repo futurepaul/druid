@@ -17,17 +17,34 @@ use druid::widget::{ActionWrapper, Button, Column, DynLabel, Padding, ProgressBa
 use druid::{UiMain, UiState};
 
 fn main() {
-    druid::shell::init();
+
+    druid_shell::init();
 
     let mut run_loop = runloop::RunLoop::new();
     let mut builder = WindowBuilder::new();
+    
     let mut col = Column::new();
-    let label = DynLabel::new(|data: &f64, _env| format!("value: {}", data));
-    let button = Button::new("increment");
-    let bar = ProgressBar::new(0.5);
+    let label_1 = DynLabel::new(|data: &f64, _env| format!("actual value: {0:.2}", data));
+    let label_2 = DynLabel::new(|data: &f64, _env| format!("2x the value: {0:.2}", data * 2.0));
+    let bar = ProgressBar::default();
+    
+
+    let button_1 = ActionWrapper::new(
+        Button::new("increment "),
+        move |data: &mut f64, _env| *data += 0.1,
+    );
+    let button_2 = ActionWrapper::new(
+        Button::new("decrement "),
+        move |data: &mut f64, _env| *data -= 0.1,
+    );
+
     col.add_child(Padding::uniform(5.0, bar), 1.0);
-    let root = ActionWrapper::new(col, |data: &mut f64, _env| *data += 0.1);
-    let state = UiState::new(root, 0.1f64);
+    col.add_child(Padding::uniform(5.0, label_1), 1.0);
+    col.add_child(Padding::uniform(5.0, label_2), 1.0);
+    col.add_child(Padding::uniform(5.0, button_1), 1.0);
+    col.add_child(Padding::uniform(5.0, button_2), 1.0);
+
+    let state = UiState::new(col, 0.7f64);
     builder.set_title("Hello example");
     builder.set_handler(Box::new(UiMain::new(state)));
     let window = builder.build().unwrap();
