@@ -16,65 +16,107 @@
 
 use std::any::Any;
 
-use crate::widget::Widget;
-use crate::{BoxConstraints, HandlerCtx, Id, LayoutCtx, LayoutResult, PaintCtx, Ui};
-
-use crate::kurbo::{Rect, Size};
+use crate::kurbo::{Affine, BezPath, Line, Point, Rect, Shape, Size};
 use crate::piet::{Color, FillRule, RenderContext};
+use crate::{
+    Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, KeyEvent, LayoutCtx, PaintCtx,
+    UpdateCtx, Widget,
+};
 
 const BOX_HEIGHT: f64 = 24.;
 const BACKGROUND_COLOR: Color = Color::rgb24(0x55_55_55);
 const BAR_COLOR: Color = Color::rgb24(0xf0_f0_ea);
 
+// #[derive(Debug, Clone)]
+// pub struct ProgressBarState {
+    
+// }
+
+// impl Data for ProgressBarState {
+//     fn same(&self, other: &Self) -> bool {
+//         self.value == other.value
+//     }
+// }
+
+// impl ProgressBarState {
+//     pub fn new(value: f64) -> Self {
+//         ProgressBarState { value }
+//     }
+
+//     pub fn set_value(&mut self, value: f64) {
+//         self.value = value.max(0.0).min(1.0);
+//     }
+// }
+
+#[derive(Debug, Clone)]
 pub struct ProgressBar {
-    value: f64,
+    value: f64
 }
 
 impl ProgressBar {
-    pub fn new(initial_value: f64) -> ProgressBar {
+    pub fn new(value: f64) -> ProgressBar {
         ProgressBar {
-            value: initial_value,
+            value
         }
-    }
-    pub fn ui(self, ctx: &mut Ui) -> Id {
-        ctx.add(self, &[])
     }
 }
 
-impl Widget for ProgressBar {
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, geom: &Rect) {
+impl Widget<f64> for ProgressBar {
+    fn paint(
+        &mut self,
+        paint_ctx: &mut PaintCtx, 
+        base_state: &BaseState,
+        data: &f64,
+        _env: &Env,
+    ) {
+
+        let rect = base_state.layout_rect.with_origin(Point::ORIGIN);
+
         //Paint the background
         let brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_COLOR);
+        
 
-        paint_ctx.render_ctx.fill(geom, &brush, FillRule::NonZero);
+        paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
 
         //Paint the bar
         let brush = paint_ctx.render_ctx.solid_brush(BAR_COLOR);
 
-        let calculated_bar_width = self.value * geom.width();
+        let calculated_bar_width = self.value * rect.width();
 
-        let rect = geom.with_size(Size::new(calculated_bar_width, geom.height()));
+        let rect = rect.with_size(Size::new(calculated_bar_width, rect.height()));
         paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
     }
 
     fn layout(
         &mut self,
+        _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
-        _children: &[Id],
-        _size: Option<Size>,
-        _ctx: &mut LayoutCtx,
-    ) -> LayoutResult {
-        LayoutResult::Size(bc.constrain((bc.max.width, BOX_HEIGHT)))
+        data: &f64,
+        _env: &Env
+    ) -> Size {
+        bc.constrain((bc.max.width, BOX_HEIGHT))
     }
 
-    fn poke(&mut self, payload: &mut dyn Any, ctx: &mut HandlerCtx) -> bool {
-        if let Some(value) = payload.downcast_ref::<f64>() {
-            self.value = *value;
-            ctx.invalidate();
-            true
-        } else {
-            println!("downcast failed");
-            false
-        }
+    fn event(
+        &mut self,
+        _event: &Event,
+        _ctx: &mut EventCtx,
+        _data: &mut f64,
+        _env: &Env,
+    ) -> Option<Action> {
+        None
+    }
+
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        _old_data: Option<&f64>,
+        data: &f64,
+        _env: &Env,
+    ) {
+        self.value = *data;
+        ctx.invalidate();
+        // self.set_value(data.value);
+        //Or should it be self.value = data.value
     }
 }
