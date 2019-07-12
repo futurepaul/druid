@@ -39,10 +39,10 @@ pub use druid_shell::dialog::{FileDialogOptions, FileDialogType};
 pub use druid_shell::keyboard::{KeyCode, KeyEvent, KeyModifiers};
 use druid_shell::platform::IdleHandle;
 use druid_shell::window::{self, WinHandler, WindowHandle};
-pub use druid_shell::window::{MouseButton, MouseEvent, ScrollEvent};
+pub use druid_shell::window::{Cursor, MouseButton, MouseEvent};
 
 pub use data::Data;
-pub use event::Event;
+pub use event::{Event, WheelEvent};
 pub use lens::{Lens, LensWrap};
 pub use value::{Delta, KeyPath, PathEl, PathFragment, Value};
 
@@ -53,7 +53,7 @@ pub struct UiMain<T: Data> {
 }
 
 pub struct UiState<T: Data> {
-    root: WidgetBase<T, Box<dyn WidgetInner<T>>>,
+    root: WidgetPod<T, Box<dyn Widget<T>>>,
     data: T,
     // Following fields might move to a separate struct so there's access
     // from contexts.
@@ -61,14 +61,14 @@ pub struct UiState<T: Data> {
     size: Size,
 }
 
-pub struct WidgetBase<T: Data, W: WidgetInner<T>> {
+pub struct WidgetPod<T: Data, W: Widget<T>> {
     state: BaseState,
     old_data: Option<T>,
     inner: W,
 }
 
 /// Convenience type for dynamic boxed widget.
-pub type BoxedWidget<T> = WidgetBase<T, Box<dyn WidgetInner<T>>>;
+pub type BoxedWidget<T> = WidgetPod<T, Box<dyn Widget<T>>>;
 
 #[derive(Default)]
 pub struct BaseState {
@@ -86,7 +86,7 @@ pub struct BaseState {
     has_active: bool,
 }
 
-pub trait WidgetInner<T> {
+pub trait Widget<T> {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env);
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size;
@@ -104,8 +104,8 @@ pub trait WidgetInner<T> {
 }
 
 // TODO: explore getting rid of this (ie be consistent about using
-// `dyn WidgetInner` only).
-impl<T> WidgetInner<T> for Box<dyn WidgetInner<T>> {
+// `dyn Widget` only).
+impl<T> Widget<T> for Box<dyn Widget<T>> {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
         self.deref_mut().paint(paint_ctx, base_state, data, env);
     }
@@ -142,11 +142,14 @@ pub struct PaintCtx<'a, 'b: 'a> {
 pub struct LayoutCtx {}
 
 pub struct EventCtx<'a> {
+    window: &'a WindowHandle,
     base_state: &'a mut BaseState,
     had_active: bool,
+    is_handled: bool,
 }
 
-pub struct UpdateCtx {
+pub struct UpdateCtx<'a> {
+    window: &'a WindowHandle,
     // Discussion: we probably want to propagate more fine-grained
     // invalidations, which would mean a structure very much like
     // `EventCtx` (and possibly using the same structure). But for
@@ -166,9 +169,9 @@ pub struct BoxConstraints {
     max: Size,
 }
 
-impl<T: Data, W: WidgetInner<T>> WidgetBase<T, W> {
-    pub fn new(inner: W) -> WidgetBase<T, W> {
-        WidgetBase {
+impl<T: Data, W: Widget<T>> WidgetPod<T, W> {
+    pub fn new(inner: W) -> WidgetPod<T, W> {
+        WidgetPod {
             state: Default::default(),
             old_data: None,
             inner,
@@ -225,7 +228,7 @@ impl<T: Data, W: WidgetInner<T>> WidgetBase<T, W> {
         data: &mut T,
         env: &Env,
     ) -> Option<Action> {
-        if !event.recurse() {
+        if ctx.is_handled || !event.recurse() {
             // This function is called by containers to propagate an event from
             // containers to children. Non-recurse events will be invoked directly
             // from other points in the library.
@@ -233,8 +236,10 @@ impl<T: Data, W: WidgetInner<T>> WidgetBase<T, W> {
         }
         let had_active = self.state.has_active;
         let mut child_ctx = EventCtx {
+            window: &ctx.window,
             base_state: &mut self.state,
             had_active,
+            is_handled: false,
         };
         let rect = child_ctx.base_state.layout_rect;
         // Note: could also represent this as `Option<Event>`.
@@ -263,6 +268,10 @@ impl<T: Data, W: WidgetInner<T>> WidgetBase<T, W> {
             Event::KeyDown(_) | Event::KeyUp(_) if !had_active => return None,
             Event::KeyDown(e) => Event::KeyDown(*e),
             Event::KeyUp(e) => Event::KeyUp(*e),
+            Event::Wheel(wheel_event) => {
+                recurse = had_active || child_ctx.base_state.is_hot;
+                Event::Wheel(wheel_event.clone())
+            }
             Event::HotChanged(is_hot) => Event::HotChanged(*is_hot),
         };
         child_ctx.base_state.needs_inval = false;
@@ -277,6 +286,7 @@ impl<T: Data, W: WidgetInner<T>> WidgetBase<T, W> {
         ctx.base_state.needs_inval |= child_ctx.base_state.needs_inval;
         ctx.base_state.is_hot |= child_ctx.base_state.is_hot;
         ctx.base_state.has_active |= child_ctx.base_state.has_active;
+        ctx.is_handled |= child_ctx.is_handled;
         action
     }
 
@@ -293,9 +303,9 @@ impl<T: Data, W: WidgetInner<T>> WidgetBase<T, W> {
 }
 
 // Consider putting the `'static` bound on the main impl.
-impl<T: Data, W: WidgetInner<T> + 'static> WidgetBase<T, W> {
+impl<T: Data, W: Widget<T> + 'static> WidgetPod<T, W> {
     pub fn boxed(self) -> BoxedWidget<T> {
-        WidgetBase {
+        WidgetPod {
             state: self.state,
             old_data: self.old_data,
             inner: Box::new(self.inner),
@@ -306,17 +316,17 @@ impl<T: Data, W: WidgetInner<T> + 'static> WidgetBase<T, W> {
 // The following seems not to work because of the parametrization on T.
 /*
 // Convenience method for conversion to boxed widgets.
-impl<T: Data, W: WidgetInner<T> + 'static> From<W> for BoxedWidget<T> {
+impl<T: Data, W: Widget<T> + 'static> From<W> for BoxedWidget<T> {
     fn from(w: W) -> BoxedWidget<T> {
-        WidgetBase::new(w).boxed()
+        WidgetPod::new(w).boxed()
     }
 }
 */
 
 impl<T: Data> UiState<T> {
-    pub fn new(root: impl WidgetInner<T> + 'static, data: T) -> UiState<T> {
+    pub fn new(root: impl Widget<T> + 'static, data: T) -> UiState<T> {
         UiState {
-            root: WidgetBase::new(root).boxed(),
+            root: WidgetPod::new(root).boxed(),
             data,
             handle: Default::default(),
             size: Default::default(),
@@ -340,12 +350,17 @@ impl<T: Data> UiState<T> {
         // should there be a root base state persisting in the ui state instead?
         let mut base_state = Default::default();
         let mut ctx = EventCtx {
+            window: &self.handle,
             base_state: &mut base_state,
             had_active: self.root.state.has_active,
+            is_handled: false,
         };
         let env = self.root_env();
         let action = self.root.event(&event, &mut ctx, &mut self.data, &env);
-        let mut update_ctx = UpdateCtx { needs_inval: false };
+        let mut update_ctx = UpdateCtx {
+            window: &self.handle,
+            needs_inval: false,
+        };
         // Note: we probably want to aggregate updates so there's only one after
         // a burst of events.
         self.root.update(&mut update_ctx, &self.data, &env);
@@ -353,7 +368,7 @@ impl<T: Data> UiState<T> {
             self.handle.invalidate();
         }
         // TODO: process actions
-        action.is_some()
+        ctx.is_handled()
     }
 
     fn paint(&mut self, piet: &mut Piet) -> bool {
@@ -421,6 +436,12 @@ impl<T: Data + 'static> WinHandler for UiMain<T> {
     fn key_up(&self, event: KeyEvent) {
         let mut state = self.state.borrow_mut();
         state.do_event(Event::KeyUp(event));
+    }
+
+    fn wheel(&self, delta: Vec2, mods: KeyModifiers) {
+        let mut state = self.state.borrow_mut();
+        let event = Event::Wheel(WheelEvent { delta, mods });
+        state.do_event(event);
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -508,11 +529,31 @@ impl<'a> EventCtx<'a> {
     pub fn is_active(&self) -> bool {
         self.base_state.is_active
     }
+
+    /// Returns a reference to the current `WindowHandle`.
+    pub fn window(&self) -> &WindowHandle {
+        &self.window
+    }
+
+    /// Set the event as "handled", which stops its propagation to other
+    /// widgets.
+    pub fn set_handled(&mut self) {
+        self.is_handled = true;
+    }
+
+    /// Determine whether the event has been handled by some other widget.
+    pub fn is_handled(&self) -> bool {
+        self.is_handled
+    }
 }
 
-impl UpdateCtx {
+impl<'a> UpdateCtx<'a> {
     pub fn invalidate(&mut self) {
         self.needs_inval = true;
+    }
+
+    pub fn window(&self) -> &WindowHandle {
+        &self.window
     }
 }
 
@@ -522,6 +563,11 @@ impl Action {
     /// Note: this is something of a placeholder and will change.
     pub fn from_str(s: impl Into<String>) -> Action {
         Action { text: s.into() }
+    }
+
+    /// Provides access to the action's string representation.
+    pub fn as_str(&self) -> &str {
+        self.text.as_str()
     }
 
     /// Merge two optional actions.

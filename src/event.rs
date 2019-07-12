@@ -14,7 +14,9 @@
 
 //! Events.
 
-use druid_shell::keyboard::KeyEvent;
+use crate::kurbo::{Rect, Shape, Vec2};
+
+use druid_shell::keyboard::{KeyEvent, KeyModifiers};
 use druid_shell::window::MouseEvent;
 
 #[derive(Debug, Clone)]
@@ -24,10 +26,62 @@ pub enum Event {
     MouseMoved(MouseEvent),
     KeyDown(KeyEvent),
     KeyUp(KeyEvent),
+    Wheel(WheelEvent),
     HotChanged(bool),
 }
 
+#[derive(Debug, Clone)]
+pub struct WheelEvent {
+    /// The wheel movement.
+    ///
+    /// The polarity is the amount to be added to the scroll position,
+    /// in other words the opposite of the direction the content should
+    /// move on scrolling. This polarity is consistent with the
+    /// deltaX and deltaY values in a web [WheelEvent].
+    ///
+    /// [WheelEvent]: https://w3c.github.io/uievents/#event-type-wheel
+    pub delta: Vec2,
+    /// The keyboard modifiers at the time of the event.
+    pub mods: KeyModifiers,
+}
+
 impl Event {
+    /// Transform the event for the contents of a scrolling container.
+    pub fn transform_scroll(&self, offset: Vec2, viewport: Rect) -> Option<Event> {
+        // TODO: need to wire this up so that it always propagates mouse events
+        // if the widget is active.
+        match self {
+            Event::MouseDown(mouse_event) => {
+                if viewport.winding(mouse_event.pos) != 0 {
+                    let mut mouse_event = mouse_event.clone();
+                    mouse_event.pos += offset;
+                    Some(Event::MouseDown(mouse_event))
+                } else {
+                    None
+                }
+            }
+            Event::MouseUp(mouse_event) => {
+                if viewport.winding(mouse_event.pos) != 0 {
+                    let mut mouse_event = mouse_event.clone();
+                    mouse_event.pos += offset;
+                    Some(Event::MouseUp(mouse_event))
+                } else {
+                    None
+                }
+            }
+            Event::MouseMoved(mouse_event) => {
+                if viewport.winding(mouse_event.pos) != 0 {
+                    let mut mouse_event = mouse_event.clone();
+                    mouse_event.pos += offset;
+                    Some(Event::MouseMoved(mouse_event))
+                } else {
+                    None
+                }
+            }
+            _ => Some(self.clone()),
+        }
+    }
+
     /// Whether the event should be propagated from parent to children.
     pub(crate) fn recurse(&self) -> bool {
         match self {
