@@ -16,30 +16,25 @@
 
 use std::any::Any;
 
-use crate::kurbo::{Affine, BezPath, Line, Point, Rect, Shape, Size};
-use crate::piet::{Color, FillRule, RenderContext};
+use crate::kurbo::{Affine, BezPath, Circle, Line, Point, Rect, Shape, Size, Vec2};
+use crate::piet::{Color, FillRule, RenderContext, StrokeStyle, LineCap};
 use crate::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, KeyEvent, LayoutCtx, PaintCtx,
     UpdateCtx, Widget,
 };
 
 const KNOB_WIDTH: f64 = 24.;
+const BACKGROUND_THICKNESS: f64 = 4.;
 const BACKGROUND_COLOR: Color = Color::rgb24(0x55_55_55);
 const SLIDER_COLOR: Color = Color::rgb24(0xf0_f0_ea);
 
 #[derive(Debug, Clone, Default)]
 pub struct Slider {
-    width: f64
+    width: f64,
 }
 
 impl Widget<f64> for Slider {
-    fn paint(
-        &mut self,
-        paint_ctx: &mut PaintCtx, 
-        base_state: &BaseState,
-        data: &f64,
-        _env: &Env,
-    ) {
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &f64, _env: &Env) {
         let clamped = data.max(0.0).min(1.0);
         let rect = base_state.layout_rect.with_origin(Point::ORIGIN);
 
@@ -47,28 +42,30 @@ impl Widget<f64> for Slider {
         self.width = rect.width();
 
         //Paint the background
+        let background_width = rect.width() - KNOB_WIDTH;
+        let background_origin = rect.origin() + Vec2::new(KNOB_WIDTH / 2., rect.height() / 2.);
+        let background_line = Line::new(
+            background_origin,
+            background_origin + Vec2::new(background_width, 0.),
+        );
         let brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_COLOR);
-        paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
-
-        //Paint the slider
-        let brush = paint_ctx.render_ctx.solid_brush(SLIDER_COLOR);
-        let slider_absolute_position = (self.width - KNOB_WIDTH) * clamped + KNOB_WIDTH / 2.;
-        let full_box = KNOB_WIDTH;
-
-        let mut position = slider_absolute_position - (KNOB_WIDTH / 2.);
-        if position < 0. {
-            position = 0.;
-        } else if (position + KNOB_WIDTH) > self.width {
-            position = self.width - KNOB_WIDTH;
-        }
-
-        let knob_origin = Point::new(rect.origin().x + position, rect.origin().y);
-        let knob_size = Size::new(KNOB_WIDTH, rect.height());
-        let knob_rect = Rect::from((knob_origin, knob_size));
-
+        let mut stroke = StrokeStyle::new();
+        stroke.set_line_cap(LineCap::Round);
         paint_ctx
             .render_ctx
-            .fill(knob_rect, &brush, FillRule::NonZero);
+            .stroke(background_line, &brush, BACKGROUND_THICKNESS, Some(&stroke));
+
+        //Paint the slider
+        let knob_position = (self.width - KNOB_WIDTH) * clamped + KNOB_WIDTH / 2.;
+        let knob_origin = Point::new(
+            rect.origin().x + knob_position,
+            rect.origin().y + rect.height() / 2.,
+        );
+        let knob_circle = Circle::new(knob_origin, KNOB_WIDTH / 2.);
+        let brush = paint_ctx.render_ctx.solid_brush(SLIDER_COLOR);
+        paint_ctx
+            .render_ctx
+            .fill(knob_circle, &brush, FillRule::NonZero);
     }
 
     fn layout(
@@ -76,7 +73,7 @@ impl Widget<f64> for Slider {
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
         _data: &f64,
-        _env: &Env
+        _env: &Env,
     ) -> Size {
         bc.constrain((bc.max.width, bc.max.height))
     }
@@ -111,17 +108,11 @@ impl Widget<f64> for Slider {
             }
             _ => (),
         }
-        
+
         None
     }
 
-    fn update(
-        &mut self,
-        ctx: &mut UpdateCtx,
-        _old_data: Option<&f64>,
-        _data: &f64,
-        _env: &Env,
-    ) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: Option<&f64>, _data: &f64, _env: &Env) {
         ctx.invalidate();
     }
 }
