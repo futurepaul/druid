@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{ActionWrapper, Button, Column, DynLabel, Padding, ProgressBar};
+use druid::widget::{ActionWrapper, Button, Column, DynLabel, Padding, ProgressBar, Slider};
 use druid::{UiMain, UiState};
 
 fn main() {
@@ -27,8 +27,8 @@ fn main() {
     let label_1 = DynLabel::new(|data: &f64, _env| format!("actual value: {0:.2}", data));
     let label_2 = DynLabel::new(|data: &f64, _env| format!("2x the value: {0:.2}", data * 2.0));
     let bar = ProgressBar::default();
+    let slider = Slider::default();
     
-
     let button_1 = ActionWrapper::new(
         Button::new("increment "),
         move |data: &mut f64, _env| *data += 0.1,
@@ -39,6 +39,7 @@ fn main() {
     );
 
     col.add_child(Padding::uniform(5.0, bar), 1.0);
+    col.add_child(Padding::uniform(5.0, slider), 1.0);
     col.add_child(Padding::uniform(5.0, label_1), 1.0);
     col.add_child(Padding::uniform(5.0, label_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
