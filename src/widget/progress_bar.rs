@@ -26,27 +26,6 @@ use crate::{
 const BACKGROUND_COLOR: Color = Color::rgb24(0x55_55_55);
 const BAR_COLOR: Color = Color::rgb24(0xf0_f0_ea);
 
-// #[derive(Debug, Clone)]
-// pub struct ProgressBarState {
-    
-// }
-
-// impl Data for ProgressBarState {
-//     fn same(&self, other: &Self) -> bool {
-//         self.value == other.value
-//     }
-// }
-
-// impl ProgressBarState {
-//     pub fn new(value: f64) -> Self {
-//         ProgressBarState { value }
-//     }
-
-//     pub fn set_value(&mut self, value: f64) {
-//         self.value = value.max(0.0).min(1.0);
-//     }
-// }
-
 #[derive(Debug, Clone, Default)]
 pub struct ProgressBar {
 }
@@ -100,7 +79,6 @@ impl Widget<f64> for ProgressBar {
         _data: &f64,
         _env: &Env,
     ) {
-        // self.value = data.max(0.0).min(1.0);
         ctx.invalidate();
     }
 }
