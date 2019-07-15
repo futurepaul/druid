@@ -16,7 +16,7 @@
 
 use std::any::Any;
 
-use crate::kurbo::{Affine, BezPath, Line, Point, Rect, Shape, Size};
+use crate::kurbo::{Affine, BezPath, Line, Point, Rect, RoundedRect, Shape, Size};
 use crate::piet::{Color, FillRule, RenderContext};
 use crate::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, KeyEvent, LayoutCtx, PaintCtx,
@@ -43,6 +43,7 @@ impl Widget<f64> for ProgressBar {
 
         //Paint the background
         let brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_COLOR);
+        let background_rect = 
         paint_ctx.render_ctx.fill(rect, &brush, FillRule::NonZero);
 
         //Paint the bar

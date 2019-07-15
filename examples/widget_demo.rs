@@ -46,7 +46,7 @@ fn main() {
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
 
     let state = UiState::new(col, 0.7f64);
-    builder.set_title("Hello example");
+    builder.set_title("Widget demo");
     builder.set_handler(Box::new(UiMain::new(state)));
     let window = builder.build().unwrap();
     window.show();
