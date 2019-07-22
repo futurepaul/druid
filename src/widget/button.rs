@@ -54,21 +54,6 @@ impl Label {
         }
     }
 
-    // fn get_layout(&self, rt: &mut Piet, font_size: f64) -> <Piet as RenderContext>::TextLayout {
-    //     // TODO: caching of both the format and the layout
-    //     let font = rt
-    //         .text()
-    //         .new_font_by_name("Segoe UI", font_size)
-    //         .unwrap()
-    //         .build()
-    //         .unwrap();
-    //     rt.text()
-    //         .new_text_layout(&font, &self.text)
-    //         .unwrap()
-    //         .build()
-    //         .unwrap()
-    // }
-
     fn get_layout(
         &self,
         text: &mut <Piet as RenderContext>::Text,
