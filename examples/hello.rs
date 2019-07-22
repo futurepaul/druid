@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{ActionWrapper, Button, Column, DynLabel, Padding};
+use druid::widget::{ActionWrapper, Button, Column, DynLabel, Label, Padding};
 use druid::{UiMain, UiState};
 
 fn main() {
@@ -23,7 +23,7 @@ fn main() {
     let mut builder = WindowBuilder::new();
     let mut col = Column::new();
     let label = DynLabel::new(|data: &u32, _env| format!("value: {}", data));
-    let button = Button::new("increment");
+    let button = Button::new(Label::new("Increment"));
     col.add_child(Padding::uniform(5.0, label), 1.0);
     col.add_child(Padding::uniform(5.0, button), 1.0);
     let root = ActionWrapper::new(col, |data: &mut u32, _env| *data += 1);
