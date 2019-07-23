@@ -78,14 +78,6 @@ impl Label {
 
 impl<T: Data> Widget<T> for Label {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, _base_state: &BaseState, _data: &T, _env: &Env) {
-        // let debug_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
-        // let debug_brush = paint_ctx
-        //     .render_ctx
-        //     .solid_brush(Color::rgba32(0xff_00_00_ff));
-        // paint_ctx
-        //     .render_ctx
-        //     .fill(debug_rect, &debug_brush, FillRule::NonZero);
-
         let text = paint_ctx.render_ctx.text();
         let text_layout = self.get_layout(text, FONT_SIZE);
         let brush = paint_ctx.render_ctx.solid_brush(LABEL_TEXT_COLOR);
