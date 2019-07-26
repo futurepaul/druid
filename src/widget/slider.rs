@@ -14,18 +14,20 @@
 
 //! A slider widget.
 
-use crate::kurbo::{Circle, Line, Point, Rect, Size, Vec2};
-use crate::piet::{Color, FillRule, LineCap, RenderContext, StrokeStyle};
+use crate::kurbo::{Circle, Point, Rect, RoundedRect, Size, Vec2};
+use crate::piet::{Color, FillRule, RenderContext, Gradient, LinearGradient, GradientStop};
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
 
-const KNOB_WIDTH: f64 = 24.;
+const BACKGROUND_GREY_LIGHT: Color = Color::rgba32(0x3a_3a_3a_ff);
+const BACKGROUND_GREY_DARK: Color = Color::rgba32(0x31_31_31_ff);
+
+const KNOB_LIGHT: Color = Color::rgba32(0xf9_f9_f9_ff);
+const KNOB_DARK: Color = Color::rgba32(0xbf_bf_bf_ff);
+
+const KNOB_WIDTH: f64 = 18.;
 const BACKGROUND_THICKNESS: f64 = 4.;
-const BACKGROUND_COLOR: Color = Color::rgb24(0x55_55_55);
-const KNOB_COLOR: Color = Color::rgb24(0xf0_f0_e5);
-const KNOB_HOVER_COLOR: Color = Color::rgb24(0xa0_a0_a5);
-const KNOB_PRESSED_COLOR: Color = Color::rgb24(0x75_75_75);
 
 #[derive(Debug, Clone, Default)]
 pub struct Slider {
@@ -61,35 +63,107 @@ impl Widget<f64> for Slider {
 
         //Paint the background
         let background_width = rect.width() - KNOB_WIDTH;
-        let background_origin = Point::new(KNOB_WIDTH / 2., rect.height() / 2.);
-        let background_line = Line::new(
+        let background_origin = Point::new(KNOB_WIDTH / 2., (rect.height() - BACKGROUND_THICKNESS) / 2.);
+        let background_size = Size::new(background_width, BACKGROUND_THICKNESS);
+        let background_rect = RoundedRect::from_origin_size(
             background_origin,
-            background_origin + Vec2::new(background_width, 0.),
+            background_size.to_vec2(),
+            2.
         );
 
-        let brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_COLOR);
-        let mut stroke = StrokeStyle::new();
-        stroke.set_line_cap(LineCap::Round);
+        let gradient_brush = paint_ctx
+            .render_ctx
+            .gradient(Gradient::Linear(LinearGradient {
+                start: background_rect.origin().to_vec2(),
+                end: (background_rect.origin() + Vec2::new(0., BACKGROUND_THICKNESS)).to_vec2(),
+                stops: vec![
+                    GradientStop {
+                        pos: 0.0,
+                        color: BACKGROUND_GREY_LIGHT,
+                    },
+                    GradientStop {
+                        pos: 1.0,
+                        color: BACKGROUND_GREY_DARK,
+                    },
+                ],
+            }))
+            .unwrap();
+
         paint_ctx
             .render_ctx
-            .stroke(background_line, &brush, BACKGROUND_THICKNESS, Some(&stroke));
+            .fill(background_rect, &gradient_brush, FillRule::NonZero);
+
+        let border_brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_GREY_LIGHT);
+
+        paint_ctx
+            .render_ctx
+            .stroke(background_rect, &border_brush, 1., None);
 
         //Paint the slider
         let is_active = base_state.is_active();
-
-        let knob_color = match (is_active, self.knob_hovered) {
-            (true, _) => KNOB_PRESSED_COLOR,
-            (false, true) => KNOB_HOVER_COLOR,
-            _ => KNOB_COLOR,
-        };
+        let is_hovered = self.knob_hovered;
 
         let knob_position = (self.width - KNOB_WIDTH) * clamped + KNOB_WIDTH / 2.;
         self.knob_pos = Point::new(knob_position, rect.height() / 2.);
         let knob_circle = Circle::new(self.knob_pos, KNOB_WIDTH / 2.);
-        let brush = paint_ctx.render_ctx.solid_brush(knob_color);
+
+        let normal_knob_gradient = Gradient::Linear(LinearGradient {
+                start: self.knob_pos.to_vec2() - Vec2::new(0., KNOB_WIDTH / 2.),
+                end: self.knob_pos.to_vec2() + Vec2::new(0., KNOB_WIDTH / 2.),
+                stops: vec![
+                    GradientStop {
+                        pos: 0.0,
+                        color: KNOB_LIGHT,
+                    },
+                    GradientStop {
+                        pos: 1.0,
+                        color: KNOB_DARK,
+                    },
+                ],
+            });
+        
+        let flipped_knob_gradient = Gradient::Linear(LinearGradient {
+                start: self.knob_pos.to_vec2() - Vec2::new(0., KNOB_WIDTH / 2.),
+                end: self.knob_pos.to_vec2() + Vec2::new(0., KNOB_WIDTH / 2.),
+                stops: vec![
+                    GradientStop {
+                        pos: 0.0,
+                        color: KNOB_DARK,
+                    },
+                    GradientStop {
+                        pos: 1.0,
+                        color: KNOB_LIGHT,
+                    },
+                ],
+            });
+
+        let knob_color = if is_active {
+            flipped_knob_gradient
+        } else {
+            normal_knob_gradient
+        };
+
+        let knob_brush = paint_ctx
+            .render_ctx
+            .gradient(knob_color)
+            .unwrap();
+
         paint_ctx
             .render_ctx
-            .fill(knob_circle, &brush, FillRule::NonZero);
+            .fill(knob_circle, &knob_brush, FillRule::NonZero);
+
+        let border_color = if is_hovered || is_active {
+            KNOB_LIGHT
+        } else {
+            KNOB_DARK
+        };
+
+        let border_brush = paint_ctx.render_ctx.solid_brush(border_color);
+
+        paint_ctx
+            .render_ctx
+            .stroke(knob_circle, &border_brush, 1., None);
+
     }
 
     fn layout(
