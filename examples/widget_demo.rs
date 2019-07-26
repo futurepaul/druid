@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{ActionWrapper, Button, Column, DynLabel, Padding, ProgressBar, Slider};
+use druid::widget::{ActionWrapper, Button, Column, DynLabel, Label, Padding, ProgressBar, Slider};
 use druid::{UiMain, UiState};
 
 fn main() {
@@ -28,10 +28,10 @@ fn main() {
     let bar = ProgressBar::default();
     let slider = Slider::default();
 
-    let button_1 = ActionWrapper::new(Button::new("increment "), move |data: &mut f64, _env| {
+    let button_1 = ActionWrapper::new(Button::new(Label::new("Increment")), move |data: &mut f64, _env| {
         *data += 0.1
     });
-    let button_2 = ActionWrapper::new(Button::new("decrement "), move |data: &mut f64, _env| {
+    let button_2 = ActionWrapper::new(Button::new(Label::new("Decrement")), move |data: &mut f64, _env| {
         *data -= 0.1
     });
 
