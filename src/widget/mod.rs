@@ -36,4 +36,4 @@ mod slider;
 pub use crate::widget::slider::Slider;
 
 mod textbox;
-pub use crate::widget::textbox::TextBox;
+pub use crate::widget::textbox::{TextBox, DynWidget};

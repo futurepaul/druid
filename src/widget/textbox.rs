@@ -14,9 +14,11 @@
 
 //! A textbox widget.
 
+use std::marker::PhantomData;
+
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, KeyCode, LayoutCtx, PaintCtx,
-    UpdateCtx, Widget,
+    UpdateCtx, Widget, WidgetPod, Data
 };
 
 use crate::kurbo::{Line, Point, RoundedRect, Size, Vec2};
@@ -182,5 +184,56 @@ impl Widget<String> for TextBox {
         _env: &Env,
     ) {
         ctx.invalidate();
+    }
+}
+
+
+pub struct DynWidget<T: Data, X: Data, F: FnMut(&T, &Env) -> X> {
+    closure: F,
+    phantom: PhantomData<T>,
+    widget: WidgetPod<X, Box<dyn Widget<X>>>,
+}
+
+impl<T: Data, X: Data, F: FnMut(&T, &Env) -> X> DynWidget<T, X, F> {
+    pub fn new(widget: impl Widget<X> + 'static, closure: F) -> DynWidget<T, X, F> {
+        DynWidget {
+            closure,
+            phantom: Default::default(),
+            widget: WidgetPod::new(widget).boxed(),
+        }
+    }
+}
+
+impl<T: Data, X: Data, F: FnMut(&T, &Env) -> X> Widget<T> for DynWidget<T, X, F> {
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
+        let converted_data = (self.closure)(data, env);
+        self.widget.paint(paint_ctx, &converted_data, env);
+    }
+
+    fn layout(
+        &mut self,
+        layout_ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        data: &T,
+        env: &Env,
+    ) -> Size {
+        let converted_data = (self.closure)(data, env);
+        self.widget.layout(layout_ctx, bc, &converted_data, env)
+
+    }
+
+    fn event(
+        &mut self,
+        event: &Event,
+        ctx: &mut EventCtx,
+        data: &mut T,
+        env: &Env,
+    ) -> Option<Action> {
+        None
+    }
+
+    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
+        let converted_data = (self.closure)(data, env);
+        self.widget.update(ctx, &converted_data, env);
     }
 }
