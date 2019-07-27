@@ -35,6 +35,7 @@ const BORDER_LIGHT: Color = Color::rgba32(0xa1_a1_a1_ff);
 
 const LABEL_TEXT_COLOR: Color = Color::rgba32(0xf0_f0_ea_ff);
 const FONT_SIZE: f64 = 14.0;
+const HEIGHT: f64 = 24.;
 
 pub struct Label {
     text: String,
@@ -93,7 +94,7 @@ impl<T: Data> Widget<T> for Label {
     fn layout(
         &mut self,
         layout_ctx: &mut LayoutCtx,
-        _bc: &BoxConstraints,
+        bc: &BoxConstraints,
         _data: &T,
         _env: &Env,
     ) -> Size {
@@ -103,7 +104,7 @@ impl<T: Data> Widget<T> for Label {
             self.size = Size::new(text_layout.width(), FONT_SIZE);
         }
 
-        self.size
+        bc.constrain(self.size)
     }
 
     fn event(
@@ -133,15 +134,14 @@ impl<T: Data> Widget<T> for Button<T> {
         let is_hot = base_state.is_hot();
 
         let rounded_rect =
-            RoundedRect::from_origin_size(Point::ORIGIN, base_state.size().to_vec2(), 4.);
+            RoundedRect::from_origin_size(Point::ORIGIN, Size::new(base_state.size().width, HEIGHT).to_vec2(), 4.);
 
         let bg_gradient = if is_active {
             paint_ctx
                 .render_ctx
                 .gradient(Gradient::Linear(LinearGradient {
-                    start: rounded_rect.origin().to_vec2(),
-                    end: (rounded_rect.origin() + Vec2::new(0., base_state.size().height))
-                        .to_vec2(),
+                    start: Point::ORIGIN.to_vec2(),
+                    end: Vec2::new(0., HEIGHT),
                     stops: vec![
                         GradientStop {
                             pos: 0.0,
@@ -158,9 +158,8 @@ impl<T: Data> Widget<T> for Button<T> {
             paint_ctx
                 .render_ctx
                 .gradient(Gradient::Linear(LinearGradient {
-                    start: rounded_rect.origin().to_vec2(),
-                    end: (rounded_rect.origin() + Vec2::new(0., base_state.size().height))
-                        .to_vec2(),
+                    start: Point::ORIGIN.to_vec2(),
+                    end: Vec2::new(0., HEIGHT),
                     stops: vec![
                         GradientStop {
                             pos: 0.0,
@@ -198,12 +197,12 @@ impl<T: Data> Widget<T> for Button<T> {
         let lr_pad = 14.;
         let tb_pad = 8.;
         self.label.set_layout_rect(Rect::from_origin_size(
-            Point::new(lr_pad, tb_pad),
+            Point::new(lr_pad / 2., tb_pad / 2.),
             label_size,
         ));
         let width = label_size.width + lr_pad * 2.;
         let height = label_size.height + tb_pad * 2.;
-        Size::new(width, height)
+        bc.constrain(Size::new(width, height))
     }
 
     fn event(
@@ -284,7 +283,7 @@ impl<T: Data, F: FnMut(&T, &Env) -> String> Widget<T> for DynLabel<T, F> {
     fn layout(
         &mut self,
         layout_ctx: &mut LayoutCtx,
-        _bc: &BoxConstraints,
+        bc: &BoxConstraints,
         data: &T,
         env: &Env,
     ) -> Size {
@@ -294,7 +293,7 @@ impl<T: Data, F: FnMut(&T, &Env) -> String> Widget<T> for DynLabel<T, F> {
             self.size = Size::new(text_layout.width(), FONT_SIZE);
         }
 
-        self.size
+        bc.constrain(self.size)
     }
 
     fn event(

@@ -87,7 +87,7 @@ impl Widget<String> for TextBox {
             Point::ORIGIN,
             Size::new(
                 base_state.size().width - BORDER_WIDTH,
-                base_state.size().height,
+                BOX_HEIGHT,
             )
             .to_vec2(),
             2.,
@@ -134,11 +134,11 @@ impl Widget<String> for TextBox {
     fn layout(
         &mut self,
         _layout_ctx: &mut LayoutCtx,
-        _bc: &BoxConstraints,
+        bc: &BoxConstraints,
         _data: &String,
         _env: &Env,
     ) -> Size {
-        Size::new(self.width, BOX_HEIGHT)
+        bc.constrain(Size::new(self.width, BOX_HEIGHT))
     }
 
     fn event(

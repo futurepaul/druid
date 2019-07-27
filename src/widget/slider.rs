@@ -15,7 +15,7 @@
 //! A slider widget.
 
 use crate::kurbo::{Circle, Point, Rect, RoundedRect, Size, Vec2};
-use crate::piet::{Color, FillRule, RenderContext, Gradient, LinearGradient, GradientStop};
+use crate::piet::{Color, FillRule, Gradient, GradientStop, LinearGradient, RenderContext};
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
@@ -63,18 +63,15 @@ impl Widget<f64> for Slider {
 
         //Paint the background
         let background_width = rect.width() - KNOB_WIDTH;
-        let background_origin = Point::new(KNOB_WIDTH / 2., (rect.height() - BACKGROUND_THICKNESS) / 2.);
+        let background_origin = Point::new(KNOB_WIDTH / 2., (KNOB_WIDTH - BACKGROUND_THICKNESS) / 2.);
         let background_size = Size::new(background_width, BACKGROUND_THICKNESS);
-        let background_rect = RoundedRect::from_origin_size(
-            background_origin,
-            background_size.to_vec2(),
-            2.
-        );
+        let background_rect =
+            RoundedRect::from_origin_size(background_origin, background_size.to_vec2(), 2.);
 
         let gradient_brush = paint_ctx
             .render_ctx
             .gradient(Gradient::Linear(LinearGradient {
-                start: background_rect.origin().to_vec2(),
+                start: background_origin.to_vec2(),
                 end: (background_rect.origin() + Vec2::new(0., BACKGROUND_THICKNESS)).to_vec2(),
                 stops: vec![
                     GradientStop {
@@ -104,38 +101,38 @@ impl Widget<f64> for Slider {
         let is_hovered = self.knob_hovered;
 
         let knob_position = (self.width - KNOB_WIDTH) * clamped + KNOB_WIDTH / 2.;
-        self.knob_pos = Point::new(knob_position, rect.height() / 2.);
+        self.knob_pos = Point::new(knob_position, KNOB_WIDTH / 2.);
         let knob_circle = Circle::new(self.knob_pos, KNOB_WIDTH / 2.);
 
         let normal_knob_gradient = Gradient::Linear(LinearGradient {
-                start: self.knob_pos.to_vec2() - Vec2::new(0., KNOB_WIDTH / 2.),
-                end: self.knob_pos.to_vec2() + Vec2::new(0., KNOB_WIDTH / 2.),
-                stops: vec![
-                    GradientStop {
-                        pos: 0.0,
-                        color: KNOB_LIGHT,
-                    },
-                    GradientStop {
-                        pos: 1.0,
-                        color: KNOB_DARK,
-                    },
-                ],
-            });
-        
+            start: self.knob_pos.to_vec2() - Vec2::new(0., KNOB_WIDTH / 2.),
+            end: self.knob_pos.to_vec2() + Vec2::new(0., KNOB_WIDTH / 2.),
+            stops: vec![
+                GradientStop {
+                    pos: 0.0,
+                    color: KNOB_LIGHT,
+                },
+                GradientStop {
+                    pos: 1.0,
+                    color: KNOB_DARK,
+                },
+            ],
+        });
+
         let flipped_knob_gradient = Gradient::Linear(LinearGradient {
-                start: self.knob_pos.to_vec2() - Vec2::new(0., KNOB_WIDTH / 2.),
-                end: self.knob_pos.to_vec2() + Vec2::new(0., KNOB_WIDTH / 2.),
-                stops: vec![
-                    GradientStop {
-                        pos: 0.0,
-                        color: KNOB_DARK,
-                    },
-                    GradientStop {
-                        pos: 1.0,
-                        color: KNOB_LIGHT,
-                    },
-                ],
-            });
+            start: self.knob_pos.to_vec2() - Vec2::new(0., KNOB_WIDTH / 2.),
+            end: self.knob_pos.to_vec2() + Vec2::new(0., KNOB_WIDTH / 2.),
+            stops: vec![
+                GradientStop {
+                    pos: 0.0,
+                    color: KNOB_DARK,
+                },
+                GradientStop {
+                    pos: 1.0,
+                    color: KNOB_LIGHT,
+                },
+            ],
+        });
 
         let knob_color = if is_active {
             flipped_knob_gradient
@@ -143,10 +140,7 @@ impl Widget<f64> for Slider {
             normal_knob_gradient
         };
 
-        let knob_brush = paint_ctx
-            .render_ctx
-            .gradient(knob_color)
-            .unwrap();
+        let knob_brush = paint_ctx.render_ctx.gradient(knob_color).unwrap();
 
         paint_ctx
             .render_ctx
@@ -163,7 +157,6 @@ impl Widget<f64> for Slider {
         paint_ctx
             .render_ctx
             .stroke(knob_circle, &border_brush, 1., None);
-
     }
 
     fn layout(

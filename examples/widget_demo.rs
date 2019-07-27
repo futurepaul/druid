@@ -28,12 +28,14 @@ fn main() {
     let bar = ProgressBar::default();
     let slider = Slider::default();
 
-    let button_1 = ActionWrapper::new(Button::new(Label::new("Increment")), move |data: &mut f64, _env| {
-        *data += 0.1
-    });
-    let button_2 = ActionWrapper::new(Button::new(Label::new("Decrement")), move |data: &mut f64, _env| {
-        *data -= 0.1
-    });
+    let button_1 = ActionWrapper::new(
+        Button::new(Label::new("Increment")),
+        move |data: &mut f64, _env| *data += 0.1,
+    );
+    let button_2 = ActionWrapper::new(
+        Button::new(Label::new("Decrement")),
+        move |data: &mut f64, _env| *data -= 0.1,
+    );
 
     col.add_child(Padding::uniform(5.0, bar), 1.0);
     col.add_child(Padding::uniform(5.0, slider), 1.0);

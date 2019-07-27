@@ -17,7 +17,7 @@
 use druid::shell::{runloop, WindowBuilder};
 use druid::{Data, LensWrap, UiMain, UiState, Widget};
 
-use druid::widget::{ActionWrapper, Button, Column, Label, DynLabel, Padding, Row};
+use druid::widget::{ActionWrapper, Button, Column, DynLabel, Label, Padding, Row};
 
 #[derive(Clone)]
 struct CalcState {

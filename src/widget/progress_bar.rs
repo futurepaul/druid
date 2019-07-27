@@ -36,7 +36,7 @@ impl Widget<f64> for ProgressBar {
         let clamped = data.max(0.0).min(1.0);
         // let rect = Rect::from_origin_size(Point::new(0., base_state.size().height / 2. - HEIGHT / 2.), Size { width: base_state.size().width, height: HEIGHT });
         let rounded_rect = RoundedRect::from_origin_size(
-            Point::new(0., base_state.size().height / 2. - HEIGHT / 2.),
+            Point::ORIGIN,
             (Size {
                 width: base_state.size().width,
                 height: HEIGHT,
@@ -49,8 +49,8 @@ impl Widget<f64> for ProgressBar {
         let gradient_brush = paint_ctx
             .render_ctx
             .gradient(Gradient::Linear(LinearGradient {
-                start: rounded_rect.origin().to_vec2(),
-                end: (rounded_rect.origin() + Vec2::new(0., HEIGHT)).to_vec2(),
+                start: Point::ORIGIN.to_vec2(),
+                end: Vec2::new(0., HEIGHT),
                 stops: vec![
                     GradientStop {
                         pos: 0.0,
@@ -77,7 +77,7 @@ impl Widget<f64> for ProgressBar {
         let calculated_bar_width = clamped * rounded_rect.width();
         // let rect = rect.with_size(Size::new(calculated_bar_width, rect.height()));
         let rounded_rect = RoundedRect::from_origin_size(
-            Point::new(0., base_state.size().height / 2. - HEIGHT / 2.),
+            Point::ORIGIN,
             (Size {
                 width: calculated_bar_width,
                 height: HEIGHT,
@@ -88,8 +88,8 @@ impl Widget<f64> for ProgressBar {
         let gradient_brush = paint_ctx
             .render_ctx
             .gradient(Gradient::Linear(LinearGradient {
-                start: rounded_rect.origin().to_vec2(),
-                end: (rounded_rect.origin() + Vec2::new(0., HEIGHT)).to_vec2(),
+                start: Point::ORIGIN.to_vec2(),
+                end: Vec2::new(0., HEIGHT),
                 stops: vec![
                     GradientStop {
                         pos: 0.0,

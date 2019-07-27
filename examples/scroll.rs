@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{Button, Label, Column, Padding, Scroll};
+use druid::widget::{Button, Column, Label, Padding, Scroll};
 use druid::{UiMain, UiState};
 
 fn main() {
