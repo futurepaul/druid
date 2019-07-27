@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{ActionWrapper, Button, Column, DynLabel, Label, Padding, ProgressBar, Slider};
+use druid::widget::{ActionWrapper, Button, Column, DynLabel, Label, DynWidget, TextBox, Padding, ProgressBar, Slider};
 use druid::{UiMain, UiState};
 
 fn main() {
@@ -37,12 +37,21 @@ fn main() {
         move |data: &mut f64, _env| *data -= 0.1,
     );
 
+    let textbox = DynWidget::new(
+        TextBox::new(200.),
+        |input: &f64, _env| input.to_string(),
+        |output: &String, _env| {
+            output.parse::<f64>().unwrap_or(0.)
+        },
+    );
+
     col.add_child(Padding::uniform(5.0, bar), 1.0);
     col.add_child(Padding::uniform(5.0, slider), 1.0);
     col.add_child(Padding::uniform(5.0, label_1), 1.0);
     col.add_child(Padding::uniform(5.0, label_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
+    col.add_child(Padding::uniform(5.0, textbox), 1.0);
 
     let state = UiState::new(col, 0.7f64);
     builder.set_title("Widget demo");

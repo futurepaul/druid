@@ -17,8 +17,8 @@
 use std::marker::PhantomData;
 
 use crate::{
-    Action, BaseState, BoxConstraints, Env, Event, EventCtx, KeyCode, LayoutCtx, PaintCtx,
-    UpdateCtx, Widget, WidgetPod, Data
+    Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, KeyCode, LayoutCtx, PaintCtx,
+    UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::kurbo::{Line, Point, RoundedRect, Size, Vec2};
@@ -187,27 +187,39 @@ impl Widget<String> for TextBox {
     }
 }
 
-
-pub struct DynWidget<T: Data, X: Data, F: FnMut(&T, &Env) -> X> {
-    closure: F,
+//T is what the app gives us
+//U is what the inner widget needs
+//F converts from T to U
+//G converts from U to T
+pub struct DynWidget<T: Data, U: Data, F: FnMut(&T, &Env) -> U, G: FnMut(&U, &Env) -> T> {
+    in_closure: F,
+    out_closure: G,
     phantom: PhantomData<T>,
-    widget: WidgetPod<X, Box<dyn Widget<X>>>,
+    widget: Box<dyn Widget<U>>,
 }
 
-impl<T: Data, X: Data, F: FnMut(&T, &Env) -> X> DynWidget<T, X, F> {
-    pub fn new(widget: impl Widget<X> + 'static, closure: F) -> DynWidget<T, X, F> {
+impl<T: Data, U: Data, F: FnMut(&T, &Env) -> U, G: FnMut(&U, &Env) -> T> DynWidget<T, U, F, G> {
+    pub fn new(
+        widget: impl Widget<U> + 'static,
+        in_closure: F,
+        out_closure: G,
+    ) -> DynWidget<T, U, F, G> {
         DynWidget {
-            closure,
+            in_closure,
+            out_closure,
             phantom: Default::default(),
-            widget: WidgetPod::new(widget).boxed(),
+            widget: Box::new(widget),
         }
     }
 }
 
-impl<T: Data, X: Data, F: FnMut(&T, &Env) -> X> Widget<T> for DynWidget<T, X, F> {
+impl<T: Data, U: Data, F: FnMut(&T, &Env) -> U, G: FnMut(&U, &Env) -> T> Widget<T>
+    for DynWidget<T, U, F, G>
+{
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
-        let converted_data = (self.closure)(data, env);
-        self.widget.paint(paint_ctx, &converted_data, env);
+        let converted_data = (self.in_closure)(data, env);
+        self.widget
+            .paint(paint_ctx, base_state, &converted_data, env);
     }
 
     fn layout(
@@ -217,9 +229,8 @@ impl<T: Data, X: Data, F: FnMut(&T, &Env) -> X> Widget<T> for DynWidget<T, X, F>
         data: &T,
         env: &Env,
     ) -> Size {
-        let converted_data = (self.closure)(data, env);
+        let converted_data = (self.in_closure)(data, env);
         self.widget.layout(layout_ctx, bc, &converted_data, env)
-
     }
 
     fn event(
@@ -229,11 +240,14 @@ impl<T: Data, X: Data, F: FnMut(&T, &Env) -> X> Widget<T> for DynWidget<T, X, F>
         data: &mut T,
         env: &Env,
     ) -> Option<Action> {
+        let mut converted = (self.in_closure)(data, env);
+        self.widget.event(event, ctx, &mut converted, env);
+        *data = (self.out_closure)(&converted, env);
         None
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
-        let converted_data = (self.closure)(data, env);
-        self.widget.update(ctx, &converted_data, env);
+        let converted_data = (self.in_closure)(data, env);
+        self.widget.update(ctx, None, &converted_data, env);
     }
 }

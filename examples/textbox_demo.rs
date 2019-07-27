@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{Column, DynLabel, Padding, TextBox, DynWidget};
+use druid::widget::{Column, DynLabel, DynWidget, Padding, TextBox};
 use druid::{UiMain, UiState};
 
 fn main() {
@@ -23,7 +23,11 @@ fn main() {
     let mut builder = WindowBuilder::new();
     let mut col = Column::new();
 
-    let textbox = DynWidget::new(TextBox::new(200.), |data: &String, _env| format!("laundered! {}", data));
+    let textbox = DynWidget::new(
+        TextBox::new(200.),
+        |data: &String, _env| data.to_string(),
+        |data: &String, _env| data.to_string(),
+    );
     let label = DynLabel::new(|data: &String, _env| format!("value: {}", data));
 
     col.add_child(Padding::uniform(5.0, textbox), 1.0);
