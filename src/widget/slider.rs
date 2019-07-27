@@ -63,7 +63,8 @@ impl Widget<f64> for Slider {
 
         //Paint the background
         let background_width = rect.width() - KNOB_WIDTH;
-        let background_origin = Point::new(KNOB_WIDTH / 2., (KNOB_WIDTH - BACKGROUND_THICKNESS) / 2.);
+        let background_origin =
+            Point::new(KNOB_WIDTH / 2., (KNOB_WIDTH - BACKGROUND_THICKNESS) / 2.);
         let background_size = Size::new(background_width, BACKGROUND_THICKNESS);
         let background_rect =
             RoundedRect::from_origin_size(background_origin, background_size.to_vec2(), 2.);

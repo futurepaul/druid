@@ -133,8 +133,11 @@ impl<T: Data> Widget<T> for Button<T> {
         let is_active = base_state.is_active();
         let is_hot = base_state.is_hot();
 
-        let rounded_rect =
-            RoundedRect::from_origin_size(Point::ORIGIN, Size::new(base_state.size().width, HEIGHT).to_vec2(), 4.);
+        let rounded_rect = RoundedRect::from_origin_size(
+            Point::ORIGIN,
+            Size::new(base_state.size().width, HEIGHT).to_vec2(),
+            4.,
+        );
 
         let bg_gradient = if is_active {
             paint_ctx

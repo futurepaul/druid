@@ -85,11 +85,7 @@ impl Widget<String> for TextBox {
 
         let clip_rect = RoundedRect::from_origin_size(
             Point::ORIGIN,
-            Size::new(
-                base_state.size().width - BORDER_WIDTH,
-                BOX_HEIGHT,
-            )
-            .to_vec2(),
+            Size::new(base_state.size().width - BORDER_WIDTH, BOX_HEIGHT).to_vec2(),
             2.,
         );
 
