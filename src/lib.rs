@@ -45,7 +45,7 @@ pub use event::{Event, WheelEvent};
 pub use lens::{Lens, LensWrap};
 pub use value::{Delta, KeyPath, PathEl, PathFragment, Value};
 
-const BACKGROUND_COLOR: Color = Color::rgb24(0x27_28_22);
+const BACKGROUND_COLOR: Color = Color::rgb24(0x26_26_26);
 
 // We can probably get rid of the distinction between this and UiState.
 pub struct UiMain<T: Data> {
