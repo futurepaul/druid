@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{Button, Column, Padding, Scroll};
+use druid::widget::{Button, Label, Column, Padding, Scroll};
 use druid::{UiMain, UiState};
 
 fn main() {
@@ -23,7 +23,7 @@ fn main() {
     let mut builder = WindowBuilder::new();
     let mut col = Column::new();
     for i in 0..30 {
-        let button = Button::new(format!("Button {}", i));
+        let button = Button::new(Label::new(format!("Button {}", i)));
         col.add_child(Padding::uniform(3.0, button), 0.0);
     }
     let scroll = Scroll::new(col);
