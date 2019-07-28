@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use druid::shell::{runloop, WindowBuilder};
-use druid::widget::{ActionWrapper, Button, Column, DynLabel, Label, DynWidget, TextBox, Padding, ProgressBar, Slider};
+use druid::widget::{ActionWrapper, Button, Column, DynLabel, Label, DynWidget, TextBox, CheckBox, Padding, ProgressBar, Slider};
 use druid::{UiMain, UiState};
 
 fn main() {
@@ -45,6 +45,20 @@ fn main() {
         },
     );
 
+    let checkbox = DynWidget::new(
+        CheckBox::default(),
+        |input: &f64, _env| {
+            input.to_bits() == 1.0_f64.to_bits() || input > &1.0
+        },
+        |output: &bool, _env| {
+            if *output {
+                1.0
+            } else {
+                0.0
+            }
+        },
+    );
+
     col.add_child(Padding::uniform(5.0, bar), 1.0);
     col.add_child(Padding::uniform(5.0, slider), 1.0);
     col.add_child(Padding::uniform(5.0, label_1), 1.0);
@@ -52,6 +66,7 @@ fn main() {
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
     col.add_child(Padding::uniform(5.0, textbox), 1.0);
+    col.add_child(Padding::uniform(5.0, checkbox), 1.0);
 
     let state = UiState::new(col, 0.7f64);
     builder.set_title("Widget demo");

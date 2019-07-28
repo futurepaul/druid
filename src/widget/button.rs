@@ -310,7 +310,7 @@ impl<T: Data, F: FnMut(&T, &Env) -> String> Widget<T> for DynLabel<T, F> {
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, _old_data: Option<&T>, _data: &T, _env: &Env) {
-        self.size = Size::ZERO;
+        // self.size = Size::ZERO;
         ctx.invalidate();
     }
 }

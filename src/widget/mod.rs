@@ -37,3 +37,6 @@ pub use crate::widget::slider::Slider;
 
 mod textbox;
 pub use crate::widget::textbox::{DynWidget, TextBox};
+
+mod checkbox;
+pub use crate::widget::checkbox::CheckBox;
