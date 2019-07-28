@@ -18,7 +18,7 @@ use std::marker::PhantomData;
 
 use crate::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, KeyCode, LayoutCtx, PaintCtx,
-    UpdateCtx, Widget, WidgetPod,
+    UpdateCtx, Widget,
 };
 
 use crate::kurbo::{Line, Point, RoundedRect, Size, Vec2};
@@ -246,7 +246,7 @@ impl<T: Data, U: Data, F: FnMut(&T, &Env) -> U, G: FnMut(&U, &Env) -> T> Widget<
         None
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: Option<&T>, data: &T, env: &Env) {
         let converted_data = (self.in_closure)(data, env);
         self.widget.update(ctx, None, &converted_data, env);
     }

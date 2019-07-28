@@ -14,8 +14,8 @@
 
 //! A checkbox widget.
 
-use crate::kurbo::{Circle, Point, Rect, RoundedRect, Size, Vec2, BezPath};
-use crate::piet::{Color, FillRule, Gradient, GradientStop, LinearGradient, RenderContext};
+use crate::kurbo::{ Point, RoundedRect, Size, Vec2, BezPath};
+use crate::piet::{Color, FillRule, Gradient, GradientStop, LinearGradient, RenderContext, StrokeStyle, LineCap, LineJoin};
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
@@ -69,15 +69,19 @@ impl Widget<bool> for CheckBox {
 
         if *data {
             let mut path = BezPath::new();
-            path.move_to((3.0, 9.0));
-            path.line_to((7.0, 13.0));
-            path.line_to((13.0, 5.0));
+            path.move_to((4.0, 9.0));
+            path.line_to((8.0, 13.0));
+            path.line_to((14.0, 5.0));
 
             let check_brush = paint_ctx.render_ctx.solid_brush(ALMOST_WHITE);
 
+            let mut style = StrokeStyle::new();
+            style.set_line_cap(LineCap::Round);
+            style.set_line_join(LineJoin::Round);
+
             paint_ctx
                 .render_ctx
-                .stroke(path, &check_brush, 2., None);
+                .stroke(path, &check_brush, 2., Some(&style));
         }
     }
 
@@ -124,7 +128,7 @@ impl Widget<bool> for CheckBox {
         None
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&bool>, data: &bool, _env: &Env) {
+    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: Option<&bool>, _data: &bool, _env: &Env) {
         ctx.invalidate();
     }
 }
