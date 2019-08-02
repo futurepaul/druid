@@ -40,11 +40,17 @@ const PADDING_LEFT: f64 = 4.;
 #[derive(Debug, Clone)]
 pub struct TextBox {
     width: f64,
+    cursor_pos: usize,
+    hscroll_offset: f64,
 }
 
 impl TextBox {
     pub fn new(width: f64) -> TextBox {
-        TextBox { width }
+        TextBox {
+            width,
+            hscroll_offset: 0.,
+            cursor_pos: 3,
+        }
     }
 
     fn get_layout(
@@ -115,10 +121,18 @@ impl Widget<String> for TextBox {
             .with_save(|rc| {
                 rc.clip(clip_rect, FillRule::NonZero);
 
+                let cursor_x = text_layout.width() + 1.;
+
+                let mut changed_text = data.clone();
+                let (first, last) = changed_text.split_at(self.cursor_pos);
+                // changed_text.pop();
+                let text2 = rc.text();
+                let cursor_at_3 = self.get_layout(text2, FONT_SIZE, &first.to_string()).width();
+
                 // If overflowing, shift the text
-                if text_layout.width() + (PADDING_LEFT * 2.) > self.width {
-                    let offset = text_layout.width() - self.width + (PADDING_LEFT * 2.) + 1.;
-                    rc.transform(Affine::translate(Vec2::new(-offset, 0.)));
+                if cursor_x + (PADDING_LEFT * 2.) > self.width {
+                    self.hscroll_offset = cursor_x - self.width + (PADDING_LEFT * 2.);
+                    rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
                 }
                 rc.draw_text(&text_layout, text_pos, &brush);
 
@@ -126,7 +140,7 @@ impl Widget<String> for TextBox {
                 if has_focus {
                     let brush = rc.solid_brush(CURSOR_COLOR);
 
-                    let xy = text_pos + Vec2::new(text_layout.width() + 1., 2. - FONT_SIZE);
+                    let xy = text_pos + Vec2::new(cursor_at_3, 2. - FONT_SIZE);
                     let x2y2 = xy + Vec2::new(0., FONT_SIZE + 2.);
                     let line = Line::new(xy, x2y2);
 
@@ -166,8 +180,19 @@ impl Widget<String> for TextBox {
                 match key_event {
                     event if event.key_code == KeyCode::Backspace => {
                         data.pop();
+                        self.cursor_pos = self.cursor_pos.saturating_sub(1);
+                    }
+                    event if event.key_code == KeyCode::ArrowLeft => {
+                        self.cursor_pos = self.cursor_pos.saturating_sub(1);
+                    }
+                    event if event.key_code == KeyCode::ArrowRight => {
+                        if self.cursor_pos < data.len() {
+                            self.cursor_pos += 1;
+                        }
+                        
                     }
                     event if event.key_code.is_printable() => {
+                        self.cursor_pos += 1;
                         data.push_str(event.text().unwrap_or(""));
                     }
                     _ => {}
