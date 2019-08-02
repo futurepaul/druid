@@ -46,6 +46,8 @@ pub use event::{Event, WheelEvent};
 pub use lens::{Lens, LensWrap};
 pub use value::{Delta, KeyPath, PathEl, PathFragment, Value};
 
+pub use druid_shell::unicode_segmentation;
+
 const BACKGROUND_COLOR: Color = Color::rgb24(0x27_28_22);
 
 /// A struct representing the top-level root of the UI.

@@ -24,6 +24,9 @@ use crate::piet::{
     Color, FillRule, FontBuilder, Piet, RenderContext, Text, TextLayout, TextLayoutBuilder,
 };
 
+use crate::unicode_segmentation::GraphemeCursor;
+use crate::unicode_segmentation::GraphemeIncomplete;
+
 const BACKGROUND_GREY_LIGHT: Color = Color::rgba32(0x3a_3a_3a_ff);
 const BORDER_GREY: Color = Color::rgba32(0x5a_5a_5a_ff);
 const PRIMARY_LIGHT: Color = Color::rgba32(0x5c_c4_ff_ff);
@@ -123,11 +126,10 @@ impl Widget<String> for TextBox {
 
                 let cursor_x = text_layout.width() + 1.;
 
-                let mut changed_text = data.clone();
+                let changed_text = data.clone();
                 let (first, last) = changed_text.split_at(self.cursor_pos);
                 // changed_text.pop();
-                let text2 = rc.text();
-                let cursor_at_3 = self.get_layout(text2, FONT_SIZE, &first.to_string()).width();
+                let cursor_pos = self.get_layout(rc.text(), FONT_SIZE, &first.to_string()).width();
 
                 // If overflowing, shift the text
                 if cursor_x + (PADDING_LEFT * 2.) > self.width {
@@ -140,7 +142,7 @@ impl Widget<String> for TextBox {
                 if has_focus {
                     let brush = rc.solid_brush(CURSOR_COLOR);
 
-                    let xy = text_pos + Vec2::new(cursor_at_3, 2. - FONT_SIZE);
+                    let xy = text_pos + Vec2::new(cursor_pos, 2. - FONT_SIZE);
                     let x2y2 = xy + Vec2::new(0., FONT_SIZE + 2.);
                     let line = Line::new(xy, x2y2);
 
@@ -193,7 +195,9 @@ impl Widget<String> for TextBox {
                     }
                     event if event.key_code.is_printable() => {
                         self.cursor_pos += 1;
+                        dbg!("at least it was printable! {:?}", event);
                         data.push_str(event.text().unwrap_or(""));
+                        dbg!("do I get this far?");
                     }
                     _ => {}
                 }
