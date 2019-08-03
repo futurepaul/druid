@@ -124,25 +124,40 @@ impl Widget<String> for TextBox {
             .with_save(|rc| {
                 rc.clip(clip_rect, FillRule::NonZero);
 
-                let cursor_x = text_layout.width() + 1.;
+                let max_text_width = text_layout.width();
+                let mut cursor_x: f64 = 0.;
 
-                let changed_text = data.clone();
-                let (first, last) = changed_text.split_at(self.cursor_pos);
-                // changed_text.pop();
-                let cursor_pos = self.get_layout(rc.text(), FONT_SIZE, &first.to_string()).width();
+                // TODO: do hit testing instead of this substring hack!
+                if let Some(substring) = data.get(..self.cursor_pos) {
+                    cursor_x = self.get_layout(rc.text(), FONT_SIZE, &substring.to_owned()).width();
+                }
+
+                let padded_width = self.width + (PADDING_LEFT * 2.);
 
                 // If overflowing, shift the text
-                if cursor_x + (PADDING_LEFT * 2.) > self.width {
-                    self.hscroll_offset = cursor_x - self.width + (PADDING_LEFT * 2.);
+                if max_text_width + (PADDING_LEFT * 2.) > self.width {
+                    if cursor_x < self.width - (PADDING_LEFT * 2.) {
+                        // Show head of text
+                        self.hscroll_offset = 0.;
+                    } else if cursor_x < self.hscroll_offset  {
+                        // Shift text so cursor is leftmost of box
+                        self.hscroll_offset = cursor_x;
+                    } else if cursor_x < max_text_width - padded_width {
+                        // Shift text so cursor is rightmost of box
+                        self.hscroll_offset = cursor_x - padded_width;
+                    } else {
+                        // Show tail of text
+                        self.hscroll_offset = max_text_width - padded_width;
+                    }
                     rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
-                }
+                } 
                 rc.draw_text(&text_layout, text_pos, &brush);
 
                 // Paint the cursor if focused
                 if has_focus {
                     let brush = rc.solid_brush(CURSOR_COLOR);
 
-                    let xy = text_pos + Vec2::new(cursor_pos, 2. - FONT_SIZE);
+                    let xy = text_pos + Vec2::new(cursor_x, 2. - FONT_SIZE);
                     let x2y2 = xy + Vec2::new(0., FONT_SIZE + 2.);
                     let line = Line::new(xy, x2y2);
 
@@ -181,8 +196,10 @@ impl Widget<String> for TextBox {
             Event::KeyDown(key_event) => {
                 match key_event {
                     event if event.key_code == KeyCode::Backspace => {
-                        data.pop();
-                        self.cursor_pos = self.cursor_pos.saturating_sub(1);
+                        // data.pop();
+                        let (new_data, new_cursor) = backspace(data, self.cursor_pos);
+                        *data = new_data;
+                        self.cursor_pos = new_cursor;
                     }
                     event if event.key_code == KeyCode::ArrowLeft => {
                         self.cursor_pos = self.cursor_pos.saturating_sub(1);
@@ -194,10 +211,9 @@ impl Widget<String> for TextBox {
                         
                     }
                     event if event.key_code.is_printable() => {
+                        let incoming_text = event.text().unwrap_or("");
+                        *data = insert_at(data, self.cursor_pos, incoming_text);
                         self.cursor_pos += 1;
-                        dbg!("at least it was printable! {:?}", event);
-                        data.push_str(event.text().unwrap_or(""));
-                        dbg!("do I get this far?");
                     }
                     _ => {}
                 }
@@ -217,4 +233,13 @@ impl Widget<String> for TextBox {
     ) {
         ctx.invalidate();
     }
+}
+
+fn insert_at(src: &mut str, cursor: usize, new: &str) -> String {
+    [&src[..cursor], new.into(), &src[cursor..]].concat()
+}
+
+fn backspace(src: &mut str, cursor: usize) -> (String, usize) {
+    let new_cursor = cursor.saturating_sub(1);
+    ([&src[..new_cursor], &src[cursor..]].concat(), new_cursor)
 }
