@@ -19,16 +19,23 @@ use crate::{
     UpdateCtx, Widget,
 };
 
-use crate::kurbo::{Affine, Line, Point, RoundedRect, Size, Vec2};
+use crate::kurbo::{Affine, Line, Point, Rect, RoundedRect, Size, Vec2};
 use crate::piet::{
     Color, FillRule, FontBuilder, Piet, RenderContext, Text, TextLayout, TextLayoutBuilder,
 };
 
 use crate::unicode_segmentation::{GraphemeCursor};
 
+use druid_shell::clipboard::{ClipboardProvider, ClipboardContext};
+
 const BACKGROUND_GREY_LIGHT: Color = Color::rgba32(0x3a_3a_3a_ff);
 const BORDER_GREY: Color = Color::rgba32(0x5a_5a_5a_ff);
 const PRIMARY_LIGHT: Color = Color::rgba32(0x5c_c4_ff_ff);
+const PRIMARY_DARK: Color = Color::rgba32(0x00_4e_7d_ff);
+// const PINK: Color = Color::rgba32(0xfe_24_42_ff);
+const PINK: Color = Color::rgba32(0xf3_00_21_ff);
+// const PINK: Color = Color::rgba32(0xbe_00_1a_ff);
+
 
 const TEXT_COLOR: Color = Color::rgb24(0xf0_f0_ea);
 const CURSOR_COLOR: Color = Color::WHITE;
@@ -44,6 +51,7 @@ pub struct TextBox {
     width: f64,
     cursor_pos: usize,
     hscroll_offset: f64,
+    selected: bool,
 }
 
 impl TextBox {
@@ -52,6 +60,7 @@ impl TextBox {
             width,
             cursor_pos: 3,
             hscroll_offset: 0.,
+            selected: false,
         }
     }
 
@@ -87,10 +96,9 @@ impl Widget<String> for TextBox {
             BORDER_GREY
         };
 
-        // Paint the border / background
+        // Paint the background
         let background_brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_GREY_LIGHT);
-        let border_brush = paint_ctx.render_ctx.solid_brush(border_color);
-
+        
         let clip_rect = RoundedRect::from_origin_size(
             Point::ORIGIN,
             Size::new(
@@ -103,25 +111,21 @@ impl Widget<String> for TextBox {
 
         paint_ctx
             .render_ctx
-            .fill(clip_rect, &background_brush, FillRule::NonZero);
+            .fill(clip_rect, &background_brush, FillRule::NonZero);  
 
-        paint_ctx
-            .render_ctx
-            .stroke(clip_rect, &border_brush, BORDER_WIDTH, None);
-
-        // Paint the text
-        let text = paint_ctx.render_ctx.text();
-        let text_layout = self.get_layout(text, FONT_SIZE, data);
-        let brush = paint_ctx.render_ctx.solid_brush(TEXT_COLOR);
-
-        let text_height = FONT_SIZE * 0.8;
-        let text_pos = Point::new(0.0 + PADDING_LEFT, text_height + PADDING_TOP);
-
-        // Render text and cursor inside a clip
+        // Render text, selection, and cursor inside a clip
         paint_ctx
             .render_ctx
             .with_save(|rc| {
                 rc.clip(clip_rect, FillRule::NonZero);
+
+                // Layout and measure text
+                let text = rc.text();
+                let text_layout = self.get_layout(text, FONT_SIZE, data);
+                let brush = rc.solid_brush(TEXT_COLOR);
+
+                let text_height = FONT_SIZE * 0.8;
+                let text_pos = Point::new(0.0 + PADDING_LEFT, text_height + PADDING_TOP);
 
                 let max_text_width = text_layout.width();
                 let mut cursor_x: f64 = 0.;
@@ -131,9 +135,9 @@ impl Widget<String> for TextBox {
                     cursor_x = self.get_layout(rc.text(), FONT_SIZE, &substring.to_owned()).width();
                 }
 
+                // If overflowing, shift the text
                 let padded_width = self.width + (PADDING_LEFT * 2.);
 
-                // If overflowing, shift the text
                 if max_text_width + (PADDING_LEFT * 2.) > self.width {
                     if cursor_x < self.width - (PADDING_LEFT * 2.) {
                         // Show head of text
@@ -151,10 +155,19 @@ impl Widget<String> for TextBox {
                     }
                     rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
                 } 
+
+                // Draw selection rect
+                if self.selected {
+                    let selection_brush = rc.solid_brush(PINK);
+                    let selection_pos = Point::new(PADDING_LEFT - 1., PADDING_TOP - 2.);
+                    let selection_rect = RoundedRect::from_origin_size(selection_pos, Size::new(max_text_width + 2., FONT_SIZE + 4.).to_vec2(), 2.);
+                    rc.fill(selection_rect, &selection_brush, FillRule::NonZero);
+                }
+
                 rc.draw_text(&text_layout, text_pos, &brush);
 
                 // Paint the cursor if focused
-                if has_focus {
+                if has_focus && !self.selected {
                     let brush = rc.solid_brush(CURSOR_COLOR);
 
                     let xy = text_pos + Vec2::new(cursor_x, 2. - FONT_SIZE);
@@ -166,6 +179,13 @@ impl Widget<String> for TextBox {
                 Ok(())
             })
             .unwrap();
+
+            // Paint the border
+            let border_brush = paint_ctx.render_ctx.solid_brush(border_color);
+
+            paint_ctx
+                .render_ctx
+                .stroke(clip_rect, &border_brush, BORDER_WIDTH, None);
     }
 
     fn layout(
@@ -188,6 +208,7 @@ impl Widget<String> for TextBox {
         match event {
             Event::MouseDown(_) => {
                 ctx.request_focus();
+                self.selected = false;
                 ctx.invalidate();
             }
             Event::MouseMoved(_) => {
@@ -195,26 +216,54 @@ impl Widget<String> for TextBox {
             }
             Event::KeyDown(key_event) => {
                 match key_event {
+                    event if (event.mods.meta || event.mods.ctrl) && (event.key_code == KeyCode::KeyC) => {
+                        copy(data.to_string());
+                    }
+                    event if (event.mods.meta || event.mods.ctrl) && (event.key_code == KeyCode::KeyV) => {
+                        let paste_text = paste();
+                        if self.selected {
+                            self.cursor_pos = paste_text.len();
+                            *data = paste_text;
+                        } else {
+                            let new_cursor = insert_at(data, self.cursor_pos, &paste_text);
+                            self.cursor_pos = new_cursor;
+                        }
+
+                    }
+                    event if (event.mods.meta || event.mods.ctrl) && (event.key_code == KeyCode::KeyA) => {
+                        self.selected = true;
+                    }
                     event if event.key_code == KeyCode::Backspace => {
-                        // data.pop();
-                        let (new_data, new_cursor) = backspace(data, self.cursor_pos);
-                        *data = new_data;
+                        if self.selected {
+                            self.selected = false;
+                            *data = "".to_string();
+                            self.cursor_pos = 0;
+                        }
+
+                        let new_cursor = backspace(data, self.cursor_pos);
                         self.cursor_pos = new_cursor;
                     }
                     event if event.key_code == KeyCode::ArrowLeft => {
+                        self.selected = false;
                         if let Some(prev) = prev_grapheme(data, self.cursor_pos) {
                             self.cursor_pos = prev;
                         }
                     }
                     event if event.key_code == KeyCode::ArrowRight => {
+                        self.selected = false;
                         if let Some(next) = next_grapheme(data, self.cursor_pos) {
                             self.cursor_pos = next;
                         }         
                     }
                     event if event.key_code.is_printable() => {
+                        if self.selected {
+                            self.selected = false;
+                            *data = "".to_string();
+                            self.cursor_pos = 0;
+                        }
+
                         let incoming_text = event.text().unwrap_or("");
-                        let (new_data, new_cursor) = insert_at(data, self.cursor_pos, incoming_text);
-                        *data = new_data;
+                        let new_cursor = insert_at(data, self.cursor_pos, incoming_text);
                         self.cursor_pos = new_cursor;
                     }
                     _ => {}
@@ -237,16 +286,18 @@ impl Widget<String> for TextBox {
     }
 }
 
-fn insert_at(src: &mut str, cursor: usize, new: &str) -> (String, usize) {
+fn insert_at(src: &mut String, cursor: usize, new: &str) -> usize {
     // TODO: handle incomplete graphemes
-    let stride = next_grapheme(new, 0).expect("How did this happen?");
-    let new_cursor = cursor + stride;
-    ([&src[..cursor], new.into(), &src[cursor..]].concat(), new_cursor)
+    src.replace_range(cursor..cursor, new);
+    let new_cursor = cursor + new.len();
+    new_cursor
 }
 
-fn backspace(src: &mut str, cursor: usize) -> (String, usize) {
-    let new_cursor = prev_grapheme(src, cursor).unwrap_or(0);
-    ([&src[..new_cursor], &src[cursor..]].concat(), new_cursor)
+fn backspace(src: &mut String, cursor: usize) -> usize {
+    let new_cursor = prev_grapheme(&src, cursor).unwrap_or(0);
+    src.replace_range(new_cursor..cursor, "");
+    new_cursor
+    // ([&src[..new_cursor], &src[cursor..]].concat(), )
 }
 
 fn next_grapheme(src: &str, cursor: usize) -> Option<usize> {
@@ -259,4 +310,14 @@ fn prev_grapheme(src: &str, cursor: usize) -> Option<usize> {
     let mut c = GraphemeCursor::new(cursor, src.len(), true);
     let prev_boundary = c.prev_boundary(src, 0);
     prev_boundary.unwrap_or(None)
+}
+
+fn copy(input: String) {
+    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+    ctx.set_contents(input).unwrap();
+}
+
+fn paste() -> String {
+    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+    ctx.get_contents().unwrap_or("".to_string())
 }
