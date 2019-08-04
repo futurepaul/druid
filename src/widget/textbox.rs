@@ -138,19 +138,16 @@ impl Widget<String> for TextBox {
                     if cursor_x < self.width - (PADDING_LEFT * 2.) {
                         // Show head of text
                         self.hscroll_offset = 0.;
-                        dbg!("1");
                     } else if cursor_x < self.hscroll_offset  {
                         // Shift text so cursor is leftmost of box
                         self.hscroll_offset = cursor_x;
-                        dbg!("2");
                     } else if cursor_x < max_text_width - padded_width {
                         // Shift text so cursor is rightmost of box
+                        // TODO: This math isn't exactly right. I might need one more case?
                         self.hscroll_offset = cursor_x - padded_width;
-                        dbg!("3");
                     } else {
                         // Show tail of text
                         self.hscroll_offset = (max_text_width - self.width) + (PADDING_LEFT * 2.);
-                        dbg!("4");
                     }
                     rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
                 } 
