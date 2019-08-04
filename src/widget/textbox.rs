@@ -19,24 +19,19 @@ use crate::{
     UpdateCtx, Widget,
 };
 
-use crate::kurbo::{Affine, Line, Point, Rect, RoundedRect, Size, Vec2};
+use crate::kurbo::{Affine, Line, Point, RoundedRect, Size, Vec2};
 use crate::piet::{
     Color, FillRule, FontBuilder, Piet, RenderContext, Text, TextLayout, TextLayoutBuilder,
 };
 
-use crate::unicode_segmentation::{GraphemeCursor};
+use crate::unicode_segmentation::GraphemeCursor;
 
-use druid_shell::clipboard::{ClipboardProvider, ClipboardContext};
+use druid_shell::clipboard::{ClipboardContext, ClipboardProvider};
 
 const BACKGROUND_GREY_LIGHT: Color = Color::rgba32(0x3a_3a_3a_ff);
 const BORDER_GREY: Color = Color::rgba32(0x5a_5a_5a_ff);
 const PRIMARY_LIGHT: Color = Color::rgba32(0x5c_c4_ff_ff);
-const PRIMARY_DARK: Color = Color::rgba32(0x00_4e_7d_ff);
-// const PINK: Color = Color::rgba32(0xfe_24_42_ff);
 const PINK: Color = Color::rgba32(0xf3_00_21_ff);
-// const PINK: Color = Color::rgba32(0xbe_00_1a_ff);
-
-
 const TEXT_COLOR: Color = Color::rgb24(0xf0_f0_ea);
 const CURSOR_COLOR: Color = Color::WHITE;
 
@@ -78,6 +73,48 @@ impl TextBox {
             .unwrap();
         text.new_text_layout(&font, data).unwrap().build().unwrap()
     }
+
+    fn insert_at_cursor(&mut self, src: &mut String, new: &str) {
+        // TODO: handle incomplete graphemes
+        let cursor = self.cursor_pos;
+        src.replace_range(cursor..cursor, new);
+        self.cursor_pos = cursor + new.len();
+    }
+
+    fn backspace(&mut self, src: &mut String) {
+        let cursor = self.cursor_pos;
+        self.prev_grapheme(&src);
+        let new_cursor = self.cursor_pos;
+        src.replace_range(new_cursor..cursor, "");
+    }
+
+    fn next_grapheme(&mut self, src: &str) {
+        let mut c = GraphemeCursor::new(self.cursor_pos, src.len(), true);
+        let next_boundary = c.next_boundary(src, 0).unwrap();
+        if let Some(next) = next_boundary {
+            self.cursor_pos = next;
+        }
+    }
+
+    fn prev_grapheme(&mut self, src: &str) {
+        let mut c = GraphemeCursor::new(self.cursor_pos, src.len(), true);
+        let prev_boundary = c.prev_boundary(src, 0).unwrap();
+        if let Some(prev) = prev_boundary {
+            self.cursor_pos = prev;
+        }
+    }
+
+    fn copy_text(&self, input: String) {
+        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+        //TODO: make this selection-aware
+        ctx.set_contents(input).unwrap();
+    }
+
+    fn paste_text(&self) -> String {
+        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+        //TODO: make this selection-aware
+        ctx.get_contents().unwrap_or("".to_string())
+    }
 }
 
 impl Widget<String> for TextBox {
@@ -98,7 +135,7 @@ impl Widget<String> for TextBox {
 
         // Paint the background
         let background_brush = paint_ctx.render_ctx.solid_brush(BACKGROUND_GREY_LIGHT);
-        
+
         let clip_rect = RoundedRect::from_origin_size(
             Point::ORIGIN,
             Size::new(
@@ -111,7 +148,7 @@ impl Widget<String> for TextBox {
 
         paint_ctx
             .render_ctx
-            .fill(clip_rect, &background_brush, FillRule::NonZero);  
+            .fill(clip_rect, &background_brush, FillRule::NonZero);
 
         // Render text, selection, and cursor inside a clip
         paint_ctx
@@ -132,7 +169,9 @@ impl Widget<String> for TextBox {
 
                 // TODO: do hit testing instead of this substring hack!
                 if let Some(substring) = data.get(..self.cursor_pos) {
-                    cursor_x = self.get_layout(rc.text(), FONT_SIZE, &substring.to_owned()).width();
+                    cursor_x = self
+                        .get_layout(rc.text(), FONT_SIZE, &substring.to_owned())
+                        .width();
                 }
 
                 // If overflowing, shift the text
@@ -142,7 +181,7 @@ impl Widget<String> for TextBox {
                     if cursor_x < self.width - (PADDING_LEFT * 2.) {
                         // Show head of text
                         self.hscroll_offset = 0.;
-                    } else if cursor_x < self.hscroll_offset  {
+                    } else if cursor_x < self.hscroll_offset {
                         // Shift text so cursor is leftmost of box
                         self.hscroll_offset = cursor_x;
                     } else if cursor_x < max_text_width - padded_width {
@@ -154,16 +193,21 @@ impl Widget<String> for TextBox {
                         self.hscroll_offset = (max_text_width - self.width) + (PADDING_LEFT * 2.);
                     }
                     rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
-                } 
+                }
 
-                // Draw selection rect
+                // Draw selection rect, also shifted
                 if self.selected {
                     let selection_brush = rc.solid_brush(PINK);
                     let selection_pos = Point::new(PADDING_LEFT - 1., PADDING_TOP - 2.);
-                    let selection_rect = RoundedRect::from_origin_size(selection_pos, Size::new(max_text_width + 2., FONT_SIZE + 4.).to_vec2(), 2.);
+                    let selection_rect = RoundedRect::from_origin_size(
+                        selection_pos,
+                        Size::new(max_text_width + 2., FONT_SIZE + 4.).to_vec2(),
+                        1.,
+                    );
                     rc.fill(selection_rect, &selection_brush, FillRule::NonZero);
                 }
 
+                // Finally draw the text!
                 rc.draw_text(&text_layout, text_pos, &brush);
 
                 // Paint the cursor if focused
@@ -180,12 +224,12 @@ impl Widget<String> for TextBox {
             })
             .unwrap();
 
-            // Paint the border
-            let border_brush = paint_ctx.render_ctx.solid_brush(border_color);
+        // Paint the border
+        let border_brush = paint_ctx.render_ctx.solid_brush(border_color);
 
-            paint_ctx
-                .render_ctx
-                .stroke(clip_rect, &border_brush, BORDER_WIDTH, None);
+        paint_ctx
+            .render_ctx
+            .stroke(clip_rect, &border_brush, BORDER_WIDTH, None);
     }
 
     fn layout(
@@ -216,21 +260,29 @@ impl Widget<String> for TextBox {
             }
             Event::KeyDown(key_event) => {
                 match key_event {
-                    event if (event.mods.meta || event.mods.ctrl) && (event.key_code == KeyCode::KeyC) => {
-                        copy(data.to_string());
+                    event
+                        if (event.mods.meta || event.mods.ctrl)
+                            && (event.key_code == KeyCode::KeyC) =>
+                    {
+                        self.copy_text(data.to_string());
                     }
-                    event if (event.mods.meta || event.mods.ctrl) && (event.key_code == KeyCode::KeyV) => {
-                        let paste_text = paste();
+                    event
+                        if (event.mods.meta || event.mods.ctrl)
+                            && (event.key_code == KeyCode::KeyV) =>
+                    {
+                        let paste_text = self.paste_text();
                         if self.selected {
+                            self.selected = false;
                             self.cursor_pos = paste_text.len();
                             *data = paste_text;
                         } else {
-                            let new_cursor = insert_at(data, self.cursor_pos, &paste_text);
-                            self.cursor_pos = new_cursor;
+                            self.insert_at_cursor(data, &paste_text);
                         }
-
                     }
-                    event if (event.mods.meta || event.mods.ctrl) && (event.key_code == KeyCode::KeyA) => {
+                    event
+                        if (event.mods.meta || event.mods.ctrl)
+                            && (event.key_code == KeyCode::KeyA) =>
+                    {
                         self.selected = true;
                     }
                     event if event.key_code == KeyCode::Backspace => {
@@ -240,20 +292,23 @@ impl Widget<String> for TextBox {
                             self.cursor_pos = 0;
                         }
 
-                        let new_cursor = backspace(data, self.cursor_pos);
-                        self.cursor_pos = new_cursor;
+                        self.backspace(data);
                     }
                     event if event.key_code == KeyCode::ArrowLeft => {
-                        self.selected = false;
-                        if let Some(prev) = prev_grapheme(data, self.cursor_pos) {
-                            self.cursor_pos = prev;
+                        if self.selected {
+                            self.selected = false;
+                            self.cursor_pos = 0;
+                        } else {
+                            self.prev_grapheme(data);
                         }
                     }
                     event if event.key_code == KeyCode::ArrowRight => {
-                        self.selected = false;
-                        if let Some(next) = next_grapheme(data, self.cursor_pos) {
-                            self.cursor_pos = next;
-                        }         
+                        if self.selected {
+                            self.selected = false;
+                            self.cursor_pos = data.len();
+                        } else {
+                            self.next_grapheme(data);
+                        }
                     }
                     event if event.key_code.is_printable() => {
                         if self.selected {
@@ -261,10 +316,8 @@ impl Widget<String> for TextBox {
                             *data = "".to_string();
                             self.cursor_pos = 0;
                         }
-
                         let incoming_text = event.text().unwrap_or("");
-                        let new_cursor = insert_at(data, self.cursor_pos, incoming_text);
-                        self.cursor_pos = new_cursor;
+                        self.insert_at_cursor(data, incoming_text);
                     }
                     _ => {}
                 }
@@ -284,40 +337,4 @@ impl Widget<String> for TextBox {
     ) {
         ctx.invalidate();
     }
-}
-
-fn insert_at(src: &mut String, cursor: usize, new: &str) -> usize {
-    // TODO: handle incomplete graphemes
-    src.replace_range(cursor..cursor, new);
-    let new_cursor = cursor + new.len();
-    new_cursor
-}
-
-fn backspace(src: &mut String, cursor: usize) -> usize {
-    let new_cursor = prev_grapheme(&src, cursor).unwrap_or(0);
-    src.replace_range(new_cursor..cursor, "");
-    new_cursor
-    // ([&src[..new_cursor], &src[cursor..]].concat(), )
-}
-
-fn next_grapheme(src: &str, cursor: usize) -> Option<usize> {
-    let mut c = GraphemeCursor::new(cursor, src.len(), true);
-    let next_boundary = c.next_boundary(src, 0);
-    next_boundary.unwrap_or(None)
-}
-
-fn prev_grapheme(src: &str, cursor: usize) -> Option<usize> {
-    let mut c = GraphemeCursor::new(cursor, src.len(), true);
-    let prev_boundary = c.prev_boundary(src, 0);
-    prev_boundary.unwrap_or(None)
-}
-
-fn copy(input: String) {
-    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-    ctx.set_contents(input).unwrap();
-}
-
-fn paste() -> String {
-    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-    ctx.get_contents().unwrap_or("".to_string())
 }
