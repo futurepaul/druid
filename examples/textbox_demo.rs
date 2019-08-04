@@ -31,7 +31,7 @@ fn main() {
     // col.add_child(Padding::uniform(5.0, textbox_2), 1.0);
     col.add_child(Padding::uniform(5.0, label), 1.0);
 
-    let state = UiState::new(col, "typing is fun!".to_string());
+    let state = UiState::new(col, "hey, a̐éö̲, षि, ▲".to_string());
     builder.set_title("TextBox example");
     builder.set_handler(Box::new(UiMain::new(state)));
     let window = builder.build().unwrap();

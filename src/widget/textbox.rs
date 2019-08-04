@@ -24,8 +24,7 @@ use crate::piet::{
     Color, FillRule, FontBuilder, Piet, RenderContext, Text, TextLayout, TextLayoutBuilder,
 };
 
-use crate::unicode_segmentation::GraphemeCursor;
-use crate::unicode_segmentation::GraphemeIncomplete;
+use crate::unicode_segmentation::{GraphemeCursor};
 
 const BACKGROUND_GREY_LIGHT: Color = Color::rgba32(0x3a_3a_3a_ff);
 const BORDER_GREY: Color = Color::rgba32(0x5a_5a_5a_ff);
@@ -51,8 +50,8 @@ impl TextBox {
     pub fn new(width: f64) -> TextBox {
         TextBox {
             width,
-            hscroll_offset: 0.,
             cursor_pos: 3,
+            hscroll_offset: 0.,
         }
     }
 
@@ -64,7 +63,7 @@ impl TextBox {
     ) -> <Piet as RenderContext>::TextLayout {
         // TODO: caching of both the format and the layout
         let font = text
-            .new_font_by_name("Roboto", font_size)
+            .new_font_by_name("Segoe UI", font_size)
             .unwrap()
             .build()
             .unwrap();
@@ -139,15 +138,19 @@ impl Widget<String> for TextBox {
                     if cursor_x < self.width - (PADDING_LEFT * 2.) {
                         // Show head of text
                         self.hscroll_offset = 0.;
+                        dbg!("1");
                     } else if cursor_x < self.hscroll_offset  {
                         // Shift text so cursor is leftmost of box
                         self.hscroll_offset = cursor_x;
+                        dbg!("2");
                     } else if cursor_x < max_text_width - padded_width {
                         // Shift text so cursor is rightmost of box
                         self.hscroll_offset = cursor_x - padded_width;
+                        dbg!("3");
                     } else {
                         // Show tail of text
-                        self.hscroll_offset = max_text_width - padded_width;
+                        self.hscroll_offset = (max_text_width - self.width) + (PADDING_LEFT * 2.);
+                        dbg!("4");
                     }
                     rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
                 } 
@@ -202,18 +205,20 @@ impl Widget<String> for TextBox {
                         self.cursor_pos = new_cursor;
                     }
                     event if event.key_code == KeyCode::ArrowLeft => {
-                        self.cursor_pos = self.cursor_pos.saturating_sub(1);
+                        if let Some(prev) = prev_grapheme(data, self.cursor_pos) {
+                            self.cursor_pos = prev;
+                        }
                     }
                     event if event.key_code == KeyCode::ArrowRight => {
-                        if self.cursor_pos < data.len() {
-                            self.cursor_pos += 1;
-                        }
-                        
+                        if let Some(next) = next_grapheme(data, self.cursor_pos) {
+                            self.cursor_pos = next;
+                        }         
                     }
                     event if event.key_code.is_printable() => {
                         let incoming_text = event.text().unwrap_or("");
-                        *data = insert_at(data, self.cursor_pos, incoming_text);
-                        self.cursor_pos += 1;
+                        let (new_data, new_cursor) = insert_at(data, self.cursor_pos, incoming_text);
+                        *data = new_data;
+                        self.cursor_pos = new_cursor;
                     }
                     _ => {}
                 }
@@ -235,11 +240,26 @@ impl Widget<String> for TextBox {
     }
 }
 
-fn insert_at(src: &mut str, cursor: usize, new: &str) -> String {
-    [&src[..cursor], new.into(), &src[cursor..]].concat()
+fn insert_at(src: &mut str, cursor: usize, new: &str) -> (String, usize) {
+    // TODO: handle incomplete graphemes
+    let stride = next_grapheme(new, 0).expect("How did this happen?");
+    let new_cursor = cursor + stride;
+    ([&src[..cursor], new.into(), &src[cursor..]].concat(), new_cursor)
 }
 
 fn backspace(src: &mut str, cursor: usize) -> (String, usize) {
-    let new_cursor = cursor.saturating_sub(1);
+    let new_cursor = prev_grapheme(src, cursor).unwrap_or(0);
     ([&src[..new_cursor], &src[cursor..]].concat(), new_cursor)
+}
+
+fn next_grapheme(src: &str, cursor: usize) -> Option<usize> {
+    let mut c = GraphemeCursor::new(cursor, src.len(), true);
+    let next_boundary = c.next_boundary(src, 0);
+    next_boundary.unwrap_or(None)
+}
+
+fn prev_grapheme(src: &str, cursor: usize) -> Option<usize> {
+    let mut c = GraphemeCursor::new(cursor, src.len(), true);
+    let prev_boundary = c.prev_boundary(src, 0);
+    prev_boundary.unwrap_or(None)
 }
