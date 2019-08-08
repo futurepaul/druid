@@ -138,13 +138,11 @@ impl TextBox {
 
     fn copy_text(&self, input: String) {
         let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-        //TODO: make this selection-aware
         ctx.set_contents(input).unwrap();
     }
 
     fn paste_text(&self) -> String {
         let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-        //TODO: make this selection-aware
         ctx.get_contents().unwrap_or("".to_string())
     }
 
