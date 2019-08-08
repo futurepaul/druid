@@ -306,6 +306,7 @@ impl Widget<String> for TextBox {
             }
             Event::KeyDown(key_event) => {
                 match key_event {
+                    // Copy (Ctrl+C || Cmd+C)
                     event
                         if (event.mods.meta || event.mods.ctrl)
                             && (event.key_code == KeyCode::KeyC) =>
@@ -315,6 +316,7 @@ impl Widget<String> for TextBox {
                             self.copy_text(text.to_string());
                         }
                     }
+                    // Paste (Ctrl+V || Cmd+V)
                     event
                         if (event.mods.meta || event.mods.ctrl)
                             && (event.key_code == KeyCode::KeyV) =>
@@ -322,30 +324,36 @@ impl Widget<String> for TextBox {
                         let paste_text = self.paste_text();
                         self.insert(data, &paste_text);
                     }
+                    // Select all (Ctrl+A || Cmd+A)
                     event
                         if (event.mods.meta || event.mods.ctrl)
                             && (event.key_code == KeyCode::KeyA) =>
                     {
                         self.selection = Selection::new(0, data.len());
                     }
+                    // Jump left (Ctrl+ArrowLeft || Cmd+ArrowLeft)
                     event
                         if (event.mods.meta || event.mods.ctrl)
                             && (event.key_code == KeyCode::ArrowLeft) =>
                     {
                         self.cursor_to(0);
                     }
+                    // Jump right (Ctrl+ArrowRight || Cmd+ArrowRight)
                     event
                         if (event.mods.meta || event.mods.ctrl)
                             && (event.key_code == KeyCode::ArrowRight) =>
                     {
                         self.cursor_to(data.len());
                     }
+                    // Select left (Shift+ArrowLeft)
                     event if event.mods.shift && (event.key_code == KeyCode::ArrowLeft) => {
                         self.selection.end = prev_grapheme(data, self.cursor());
                     }
+                    // Select right (Shift+ArrowRight)
                     event if event.mods.shift && (event.key_code == KeyCode::ArrowRight) => {
                         self.selection.end = next_grapheme(data, self.cursor());
                     }
+                    // Move left (ArrowLeft)
                     event if event.key_code == KeyCode::ArrowLeft => {
                         if self.selection.is_caret() {
                             self.cursor_to(prev_grapheme(data, self.cursor()));
@@ -353,6 +361,7 @@ impl Widget<String> for TextBox {
                             self.cursor_to(self.selection.min());
                         }
                     }
+                    // Move right (ArrowRight)
                     event if event.key_code == KeyCode::ArrowRight => {
                         if self.selection.is_caret() {
                             self.cursor_to(next_grapheme(data, self.cursor()));
@@ -360,9 +369,11 @@ impl Widget<String> for TextBox {
                             self.cursor_to(self.selection.max());
                         }
                     }
+                    // Backspace
                     event if event.key_code == KeyCode::Backspace => {
                         self.backspace(data);
                     }
+                    // Actual typing
                     event if event.key_code.is_printable() => {
                         let incoming_text = event.text().unwrap_or("");
                         self.insert(data, incoming_text);
