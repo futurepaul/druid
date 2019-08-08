@@ -213,29 +213,25 @@ impl Widget<String> for TextBox {
                 let text_height = FONT_SIZE * 0.8;
                 let text_pos = Point::new(0.0 + PADDING_LEFT, text_height + PADDING_TOP);
 
-                let max_text_width = text_layout.width();
-                let cursor_x: f64 = self.substring_measurement_hack(rc, data, 0, self.cursor());
+                let cursor_x = self.substring_measurement_hack(rc, data, 0, self.cursor());
 
                 // If overflowing, shift the text
-                let padded_width = self.width + (PADDING_LEFT * 2.);
-
-                if max_text_width + (PADDING_LEFT * 2.) > self.width {
-                    if cursor_x < self.width - (PADDING_LEFT * 2.) {
-                        // Show head of text
-                        self.hscroll_offset = 0.;
-                    } else if cursor_x < self.hscroll_offset {
-                        // Shift text so cursor is leftmost of box
-                        self.hscroll_offset = cursor_x;
-                    } else if cursor_x < max_text_width - padded_width {
-                        // Shift text so cursor is rightmost of box
-                        // TODO: This math isn't exactly right. I might need one more case?
-                        self.hscroll_offset = cursor_x - padded_width;
-                    } else {
-                        // Show tail of text
-                        self.hscroll_offset = (max_text_width - self.width) + (PADDING_LEFT * 2.);
-                    }
-                    rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
+                let padding = PADDING_LEFT * 2.;
+                if cursor_x > self.width + self.hscroll_offset - padding {
+                    // If cursor goes past right side, bump the offset
+                    //       ->
+                    // **[****I]****
+                    //   ^
+                    self.hscroll_offset = cursor_x - self.width + padding;
+                } else if cursor_x < self.hscroll_offset {
+                    // If cursor goes past left side, match the offset
+                    //    <-
+                    // **[I****]****
+                    //   ^
+                    self.hscroll_offset = cursor_x
                 }
+
+                rc.transform(Affine::translate(Vec2::new(-self.hscroll_offset, 0.)));
 
                 // Draw selection rect, also shifted
                 if !self.selection.is_caret() {
