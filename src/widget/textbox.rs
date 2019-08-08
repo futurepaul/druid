@@ -328,8 +328,17 @@ impl Widget<String> for TextBox {
                     {
                         self.selection = Selection::new(0, data.len());
                     }
-                    event if event.key_code == KeyCode::Backspace => {
-                        self.backspace(data);
+                    event
+                        if (event.mods.meta || event.mods.ctrl)
+                            && (event.key_code == KeyCode::ArrowLeft) =>
+                    {
+                        self.cursor_to(0);
+                    }
+                    event
+                        if (event.mods.meta || event.mods.ctrl)
+                            && (event.key_code == KeyCode::ArrowRight) =>
+                    {
+                        self.cursor_to(data.len());
                     }
                     event if event.mods.shift && (event.key_code == KeyCode::ArrowLeft) => {
                         self.selection.end = prev_grapheme(data, self.cursor());
@@ -351,7 +360,9 @@ impl Widget<String> for TextBox {
                             self.cursor_to(self.selection.max());
                         }
                     }
-
+                    event if event.key_code == KeyCode::Backspace => {
+                        self.backspace(data);
+                    }
                     event if event.key_code.is_printable() => {
                         let incoming_text = event.text().unwrap_or("");
                         self.insert(data, incoming_text);
