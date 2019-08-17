@@ -17,11 +17,12 @@ use std::marker::PhantomData;
 use druid::kurbo::Size;
 use druid::shell::{runloop, WindowBuilder};
 use druid::widget::{
-    ActionWrapper, Button, CheckBox, Column, DynLabel, Label, Padding, ProgressBar, Slider, TextBox,
+    ActionWrapper, Button, CheckBox, Column, DynLabel, Label, Padding, ProgressBar, Row, Slider,
+    TextBox,
 };
 use druid::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx, UiMain,
-    UiState, UpdateCtx, Widget,
+    UiState, UpdateCtx, Widget, WidgetPod,
 };
 
 //T is what the app gives us
@@ -101,13 +102,24 @@ fn main() {
     let bar = ProgressBar::default();
     let slider = Slider::default();
 
-    let button_1 = ActionWrapper::new(
-        Button::new(Label::new("Increment")),
-        move |data: &mut f64, _env| *data += 0.1,
-    );
+    let button_1 = ActionWrapper::new(Button::new("Increment"), move |data: &mut f64, _env| {
+        *data += 0.1
+    });
     let button_2 = ActionWrapper::new(
-        Button::new(Label::new("Decrement")),
+        Button::sized("Decrement", 200.0, 30.0),
         move |data: &mut f64, _env| *data -= 0.1,
+    );
+
+    let mut button_row = Row::new();
+    button_row.add_child(Padding::uniform(5.0, Label::new("Thing1")), 1.0);
+    button_row.add_child(Padding::uniform(5.0, Label::new("Thing2")), 1.0);
+
+    let button_3 = ActionWrapper::new(
+        Button {
+            label: WidgetPod::new(button_row).boxed(),
+            size: None,
+        },
+        move |data: &mut f64, _env| *data += 0.05,
     );
 
     let textbox = DynWidget::new(
@@ -134,6 +146,7 @@ fn main() {
     col.add_child(Padding::uniform(5.0, label_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
+    col.add_child(Padding::uniform(5.0, button_3), 1.0);
     col.add_child(Padding::uniform(5.0, textbox), 1.0);
     col.add_child(Padding::uniform(5.0, checkbox), 1.0);
 
