@@ -21,21 +21,35 @@ use crate::{
     RenderContext, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::kurbo::{Point, RoundedRect, Size};
+use crate::kurbo::{Point, Rect, RoundedRect, Size};
 use crate::piet::{
     FontBuilder, LinearGradient, PietText, PietTextLayout, Text, TextLayout, TextLayoutBuilder,
     UnitPoint,
 };
 use crate::theme;
 
+enum HorizontalAlignment {
+    Leading,
+    Center,
+    Trailing,
+}
+
+enum VerticalAlignment {
+    Top,
+    Center,
+    Bottom,
+}
+
 /// A label with static text.
 pub struct Label {
     text: String,
+    align: (HorizontalAlignment, VerticalAlignment),
 }
 
 /// A button with a static label.
 pub struct Button<T: Data> {
-    label: WidgetPod<T, Box<dyn Widget<T>>>,
+    pub label: WidgetPod<T, Box<dyn Widget<T>>>,
+    pub size: Option<Size>,
 }
 
 /// A label with dynamic text.
@@ -51,7 +65,10 @@ impl Label {
     /// Discussion question: should this return Label or a wrapped
     /// widget (with WidgetPod)?
     pub fn new(text: impl Into<String>) -> Label {
-        Label { text: text.into() }
+        Label {
+            text: text.into(),
+            align: (HorizontalAlignment::Center, VerticalAlignment::Center),
+        }
     }
 
     fn get_layout(&self, t: &mut PietText, font_name: &str, font_size: f64) -> PietTextLayout {
@@ -69,11 +86,28 @@ impl Label {
 }
 
 impl<T: Data> Widget<T> for Label {
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, _base_state: &BaseState, _data: &T, env: &Env) {
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, _data: &T, env: &Env) {
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(paint_ctx.text(), font_name, font_size);
-        paint_ctx.draw_text(&text_layout, (0.0, font_size), &env.get(theme::LABEL_COLOR));
+        let (x, y) = match self.align {
+            (HorizontalAlignment::Center, VerticalAlignment::Center) => {
+                let x = (base_state.size().width / 2.) - (text_layout.width() / 2.);
+                let y = (base_state.size().height / 2.) - (font_size * 1.2 / 2.);
+                (x, y)
+            }
+            (HorizontalAlignment::Leading, VerticalAlignment::Top) => (0.0, 0.0),
+            (HorizontalAlignment::Trailing, VerticalAlignment::Top) => {
+                let x = base_state.size().width - text_layout.width();
+                (x, 0.0)
+            }
+            _ => (0.0, 0.0),
+        };
+        paint_ctx.draw_text(
+            &text_layout,
+            (x, font_size + y),
+            &env.get(theme::LABEL_COLOR),
+        );
     }
 
     fn layout(
@@ -86,7 +120,8 @@ impl<T: Data> Widget<T> for Label {
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(layout_ctx.text, font_name, font_size);
-        bc.constrain((text_layout.width(), 17.0))
+        // This magical 1.2 constant helps center the text vertically in the rect it's given
+        bc.constrain((text_layout.width(), font_size * 1.2))
     }
 
     fn event(
@@ -103,9 +138,17 @@ impl<T: Data> Widget<T> for Label {
 }
 
 impl<T: Data> Button<T> {
-    pub fn new(label: impl Widget<T> + 'static) -> Button<T> {
+    pub fn new(label: impl Into<String>) -> Button<T> {
         Button {
-            label: WidgetPod::new(label).boxed(),
+            label: WidgetPod::new(Label::new(label)).boxed(),
+            size: None,
+        }
+    }
+
+    pub fn sized(label: impl Into<String>, width: f64, height: f64) -> Button<T> {
+        Button {
+            label: WidgetPod::new(Label::new(label)).boxed(),
+            size: Some(Size::new(width, height)),
         }
     }
 }
@@ -115,11 +158,8 @@ impl<T: Data> Widget<T> for Button<T> {
         let is_active = base_state.is_active();
         let is_hot = base_state.is_hot();
 
-        let rounded_rect = RoundedRect::from_origin_size(
-            Point::ORIGIN,
-            Size::new(base_state.size().width, env.get(theme::TALLER_THINGS)).to_vec2(),
-            4.,
-        );
+        let rounded_rect =
+            RoundedRect::from_origin_size(Point::ORIGIN, base_state.size().to_vec2(), 4.);
         let bg_gradient = if is_active {
             LinearGradient::new(
                 UnitPoint::TOP,
@@ -154,7 +194,17 @@ impl<T: Data> Widget<T> for Button<T> {
         data: &T,
         env: &Env,
     ) -> Size {
-        self.label.layout(layout_ctx, bc, data, env)
+        if let Some(button_size) = self.size {
+            self.label.layout(layout_ctx, &bc, data, env);
+            self.label
+                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, button_size));
+            return button_size;
+        } else {
+            let size = self.label.layout(layout_ctx, &bc, data, env);
+            self.label
+                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, size));
+            return Size::new(size.width, size.height);
+        }
     }
 
     fn event(
