@@ -17,13 +17,16 @@
 use std::marker::PhantomData;
 
 use crate::{
-    Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx, Size,
-    UpdateCtx, Widget,
+    Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx,
+    RenderContext, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::piet::{FontBuilder, PietText, PietTextLayout, Text, TextLayout, TextLayoutBuilder};
+use crate::kurbo::{Point, RoundedRect, Size};
+use crate::piet::{
+    FontBuilder, LinearGradient, PietText, PietTextLayout, Text, TextLayout, TextLayoutBuilder,
+    UnitPoint,
+};
 use crate::theme;
-use crate::{Point, RenderContext};
 
 /// A label with static text.
 pub struct Label {
@@ -31,8 +34,8 @@ pub struct Label {
 }
 
 /// A button with a static label.
-pub struct Button {
-    label: Label,
+pub struct Button<T: Data> {
+    label: WidgetPod<T, Box<dyn Widget<T>>>,
 }
 
 /// A label with dynamic text.
@@ -99,27 +102,49 @@ impl<T: Data> Widget<T> for Label {
     fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: Option<&T>, _data: &T, _env: &Env) {}
 }
 
-impl Button {
-    pub fn new(text: impl Into<String>) -> Button {
+impl<T: Data> Button<T> {
+    pub fn new(label: impl Widget<T> + 'static) -> Button<T> {
         Button {
-            label: Label::new(text),
+            label: WidgetPod::new(label).boxed(),
         }
     }
 }
 
-impl<T: Data> Widget<T> for Button {
+impl<T: Data> Widget<T> for Button<T> {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
         let is_active = base_state.is_active();
         let is_hot = base_state.is_hot();
-        let bg_color = match (is_active, is_hot) {
-            (true, true) => env.get(theme::PRESSED_COLOR),
-            (false, true) => env.get(theme::HOVER_COLOR),
-            _ => env.get(theme::BACKGROUND_COLOR),
-        };
-        let rect = base_state.layout_rect.with_origin(Point::ORIGIN);
-        paint_ctx.fill(rect, &bg_color);
 
-        self.label.paint(paint_ctx, base_state, data, env);
+        let rounded_rect = RoundedRect::from_origin_size(
+            Point::ORIGIN,
+            Size::new(base_state.size().width, env.get(theme::TALLER_THINGS)).to_vec2(),
+            4.,
+        );
+        let bg_gradient = if is_active {
+            LinearGradient::new(
+                UnitPoint::TOP,
+                UnitPoint::BOTTOM,
+                (env.get(theme::BUTTON_LIGHT), env.get(theme::BUTTON_DARK)),
+            )
+        } else {
+            LinearGradient::new(
+                UnitPoint::TOP,
+                UnitPoint::BOTTOM,
+                (env.get(theme::BUTTON_DARK), env.get(theme::BUTTON_LIGHT)),
+            )
+        };
+
+        let border_color = if is_hot {
+            env.get(theme::BORDER_LIGHT)
+        } else {
+            env.get(theme::BORDER)
+        };
+
+        paint_ctx.stroke(rounded_rect, &border_color, 2.0);
+
+        paint_ctx.fill(rounded_rect, &bg_gradient);
+
+        self.label.paint_with_offset(paint_ctx, data, env);
     }
 
     fn layout(

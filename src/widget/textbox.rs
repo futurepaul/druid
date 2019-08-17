@@ -25,22 +25,13 @@ use crate::{
 
 use crate::kurbo::{Affine, Line, Point, RoundedRect, Size, Vec2};
 use crate::piet::{
-    Color, FontBuilder, PietText, PietTextLayout, RenderContext, Text, TextLayout,
-    TextLayoutBuilder,
+    FontBuilder, PietText, PietTextLayout, RenderContext, Text, TextLayout, TextLayoutBuilder,
 };
+use crate::theme;
 
 use crate::unicode_segmentation::GraphemeCursor;
 
-const BACKGROUND_GREY_LIGHT: Color = Color::rgba8(0x3a, 0x3a, 0x3a, 0xff);
-const BORDER_GREY: Color = Color::rgba8(0x5a, 0x5a, 0x5a, 0xff);
-const PRIMARY_LIGHT: Color = Color::rgba8(0x5c, 0xc4, 0xff, 0xff);
-
-const SELECTION_COLOR: Color = Color::rgb8(0xf3, 0x00, 0x21);
-const TEXT_COLOR: Color = Color::rgb8(0xf0, 0xf0, 0xEA);
-const CURSOR_COLOR: Color = Color::WHITE;
-
-const BOX_HEIGHT: f64 = 24.;
-const FONT_SIZE: f64 = 14.0;
+//TODO: should these be moved to the theme?
 const BORDER_WIDTH: f64 = 1.;
 const PADDING_TOP: f64 = 5.;
 const PADDING_LEFT: f64 = 4.;
@@ -112,10 +103,16 @@ impl TextBox {
         }
     }
 
-    fn get_layout(&self, text: &mut PietText, font_size: f64, data: &String) -> PietTextLayout {
+    fn get_layout(
+        &self,
+        text: &mut PietText,
+        font_name: &str,
+        font_size: f64,
+        data: &String,
+    ) -> PietTextLayout {
         // TODO: caching of both the format and the layout
         let font = text
-            .new_font_by_name("Segoe UI", font_size)
+            .new_font_by_name(font_name, font_size)
             .unwrap()
             .build()
             .unwrap();
@@ -137,9 +134,17 @@ impl TextBox {
     }
 
     /// Calculate a stateful scroll offset
-    fn update_hscroll(&mut self, rc_text: &mut PietText, data: &String) {
-        let cursor_x = self.substring_measurement_hack(rc_text, data, 0, self.cursor());
-        let overall_text_width = self.substring_measurement_hack(rc_text, data, 0, data.len());
+    fn update_hscroll(
+        &mut self,
+        rc_text: &mut PietText,
+        font_name: &str,
+        font_size: f64,
+        data: &String,
+    ) {
+        let cursor_x =
+            self.substring_measurement_hack(rc_text, data, font_name, font_size, 0, self.cursor());
+        let overall_text_width =
+            self.substring_measurement_hack(rc_text, data, font_name, font_size, 0, data.len());
 
         let padding = PADDING_LEFT * 2.;
         if overall_text_width < self.width {
@@ -192,6 +197,8 @@ impl TextBox {
         &self,
         piet_text: &mut PietText,
         text: &String,
+        font_name: &str,
+        font_size: f64,
         start: usize,
         end: usize,
     ) -> f64 {
@@ -199,7 +206,7 @@ impl TextBox {
 
         if let Some(substring) = text.get(start..end) {
             x = self
-                .get_layout(piet_text, FONT_SIZE, &substring.to_owned())
+                .get_layout(piet_text, font_name, font_size, &substring.to_owned())
                 .width();
         }
 
@@ -219,24 +226,26 @@ impl Widget<String> for TextBox {
         paint_ctx: &mut PaintCtx,
         base_state: &BaseState,
         data: &String,
-        _env: &Env,
+        env: &Env,
     ) {
         let has_focus = base_state.has_focus();
+        let font_size = env.get(theme::TEXT_SIZE_NORMAL);
+        let font_name = env.get(theme::FONT_NAME);
 
         let border_color = if has_focus {
-            PRIMARY_LIGHT
+            env.get(theme::PRIMARY_LIGHT)
         } else {
-            BORDER_GREY
+            env.get(theme::BORDER)
         };
 
         // Paint the background
         let clip_rect = RoundedRect::from_origin_size(
             Point::ORIGIN,
-            Size::new(self.width - BORDER_WIDTH, BOX_HEIGHT).to_vec2(),
+            Size::new(self.width - BORDER_WIDTH, env.get(theme::TALLER_THINGS)).to_vec2(),
             2.,
         );
 
-        paint_ctx.fill(clip_rect, &BACKGROUND_GREY_LIGHT);
+        paint_ctx.fill(clip_rect, &env.get(theme::BACKGROUND_LIGHT));
 
         // Render text, selection, and cursor inside a clip
         paint_ctx
@@ -250,38 +259,57 @@ impl Widget<String> for TextBox {
                 if !self.selection.is_caret() {
                     let (left, right) = (self.selection.min(), self.selection.max());
 
-                    let selection_width =
-                        self.substring_measurement_hack(rc.text(), data, left, right);
+                    let selection_width = self.substring_measurement_hack(
+                        rc.text(),
+                        data,
+                        font_name,
+                        font_size,
+                        left,
+                        right,
+                    );
 
                     let selection_pos = Point::new(
-                        self.substring_measurement_hack(rc.text(), data, 0, left) + PADDING_LEFT
+                        self.substring_measurement_hack(
+                            rc.text(),
+                            data,
+                            font_name,
+                            font_size,
+                            0,
+                            left,
+                        ) + PADDING_LEFT
                             - 1.,
                         PADDING_TOP - 2.,
                     );
                     let selection_rect = RoundedRect::from_origin_size(
                         selection_pos,
-                        Size::new(selection_width + 2., FONT_SIZE + 4.).to_vec2(),
+                        Size::new(selection_width + 2., font_size + 4.).to_vec2(),
                         1.,
                     );
-                    rc.fill(selection_rect, &SELECTION_COLOR);
+                    rc.fill(selection_rect, &env.get(theme::SELECTION_COLOR));
                 }
 
                 // Layout, measure, and draw text
-                let text_layout = self.get_layout(rc.text(), FONT_SIZE, data);
-                let text_height = FONT_SIZE * 0.8;
+                let text_layout = self.get_layout(rc.text(), font_name, font_size, data);
+                let text_height = font_size * 0.8;
                 let text_pos = Point::new(0.0 + PADDING_LEFT, text_height + PADDING_TOP);
 
-                rc.draw_text(&text_layout, text_pos, &TEXT_COLOR);
+                rc.draw_text(&text_layout, text_pos, &env.get(theme::LABEL_COLOR));
 
                 // Paint the cursor if focused and there's no selection
                 if has_focus && self.cursor_on && self.selection.is_caret() {
-                    let cursor_x =
-                        self.substring_measurement_hack(rc.text(), data, 0, self.cursor());
-                    let xy = text_pos + Vec2::new(cursor_x, 2. - FONT_SIZE);
-                    let x2y2 = xy + Vec2::new(0., FONT_SIZE + 2.);
+                    let cursor_x = self.substring_measurement_hack(
+                        rc.text(),
+                        data,
+                        font_name,
+                        font_size,
+                        0,
+                        self.cursor(),
+                    );
+                    let xy = text_pos + Vec2::new(cursor_x, 2. - font_size);
+                    let x2y2 = xy + Vec2::new(0., font_size + 2.);
                     let line = Line::new(xy, x2y2);
 
-                    rc.stroke(line, &CURSOR_COLOR, 1.);
+                    rc.stroke(line, &env.get(theme::CURSOR_COLOR), 1.);
                 }
                 Ok(())
             })
@@ -296,9 +324,9 @@ impl Widget<String> for TextBox {
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
         _data: &String,
-        _env: &Env,
+        env: &Env,
     ) -> Size {
-        bc.constrain((self.width, BOX_HEIGHT))
+        bc.constrain((self.width, env.get(theme::TALLER_THINGS)))
     }
 
     fn event(
@@ -306,7 +334,7 @@ impl Widget<String> for TextBox {
         event: &Event,
         ctx: &mut EventCtx,
         data: &mut String,
-        _env: &Env,
+        env: &Env,
     ) -> Option<Action> {
         match event {
             Event::MouseDown(_) => {
@@ -394,7 +422,12 @@ impl Widget<String> for TextBox {
                     }
                     _ => {}
                 }
-                self.update_hscroll(ctx.text(), data);
+                self.update_hscroll(
+                    ctx.text(),
+                    env.get(theme::FONT_NAME),
+                    env.get(theme::TEXT_SIZE_NORMAL),
+                    data,
+                );
                 ctx.invalidate();
             }
             _ => (),

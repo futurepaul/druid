@@ -40,3 +40,6 @@ pub use crate::widget::slider::Slider;
 
 mod textbox;
 pub use crate::widget::textbox::TextBox;
+
+mod checkbox;
+pub use crate::widget::checkbox::CheckBox;
