@@ -31,7 +31,7 @@ use std::ops::{Deref, DerefMut};
 use std::time::Instant;
 
 use kurbo::{Affine, Point, Rect, Shape, Size, Vec2};
-use piet::{Color, Piet, RenderContext};
+use piet::{Piet, RenderContext};
 
 pub use unicode_segmentation;
 
@@ -51,8 +51,6 @@ pub use env::{Env, Key, Value};
 pub use event::{Event, WheelEvent};
 pub use hotkey::{HotKey, RawMods, SysMods};
 pub use lens::{Lens, LensWrap};
-
-const BACKGROUND_COLOR: Color = Color::rgb8(0x27, 0x28, 0x22);
 
 /// A struct representing the top-level root of the UI.
 ///
@@ -736,7 +734,7 @@ impl<T: Data> UiState<T> {
             .root
             .layout(&mut layout_ctx, &bc, &self.data, &self.env);
         self.root.state.layout_rect = Rect::from_origin_size(Point::ORIGIN, size);
-        piet.clear(BACKGROUND_COLOR);
+        piet.clear(self.env.get(theme::WINDOW_BACKGROUND_COLOR));
         let mut paint_ctx = PaintCtx { render_ctx: piet };
         self.root.paint(&mut paint_ctx, &self.data, &self.env);
         if !request_anim {
