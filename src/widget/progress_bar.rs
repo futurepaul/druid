@@ -21,9 +21,6 @@ use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
 
-//TODO: this should be in the theme but what to call it?
-const HEIGHT: f64 = 18.;
-
 /// A progress bar, displaying a numeric progress value.
 #[derive(Debug, Clone, Default)]
 pub struct ProgressBar {}
@@ -35,7 +32,7 @@ impl Widget<f64> for ProgressBar {
             Point::ORIGIN,
             (Size {
                 width: base_state.size().width,
-                height: HEIGHT,
+                height: env.get(theme::HOW_TALL_THINGS_ARE),
             })
             .to_vec2(),
             4.,
@@ -61,7 +58,7 @@ impl Widget<f64> for ProgressBar {
             Point::ORIGIN,
             (Size {
                 width: calculated_bar_width,
-                height: HEIGHT,
+                height: env.get(theme::HOW_TALL_THINGS_ARE),
             })
             .to_vec2(),
             4.,
