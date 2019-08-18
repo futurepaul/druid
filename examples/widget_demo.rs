@@ -102,25 +102,18 @@ fn main() {
     let bar = ProgressBar::default();
     let slider = Slider::default();
 
-    let button_1 = ActionWrapper::new(Button::new("Increment"), move |data: &mut f64, _env| {
-        *data += 0.1
-    });
+    let button_1 = ActionWrapper::new(
+        Button::shrink_to_fit("Increment"),
+        move |data: &mut f64, _env| *data += 0.1,
+    );
     let button_2 = ActionWrapper::new(
-        Button::sized("Decrement", 200.0, 30.0),
+        Button::sized("Decrement", 200.0, 50.0),
         move |data: &mut f64, _env| *data -= 0.1,
     );
 
-    let mut button_row = Row::new();
-    button_row.add_child(Padding::uniform(5.0, Label::new("Thing1")), 1.0);
-    button_row.add_child(Padding::uniform(5.0, Label::new("Thing2")), 1.0);
-
-    let button_3 = ActionWrapper::new(
-        Button {
-            label: WidgetPod::new(button_row).boxed(),
-            size: None,
-        },
-        move |data: &mut f64, _env| *data += 0.05,
-    );
+    let button_3 = ActionWrapper::new(Button::new("+= .05"), move |data: &mut f64, _env| {
+        *data += 0.05
+    });
 
     let textbox = DynWidget::new(
         TextBox::new(200.),
