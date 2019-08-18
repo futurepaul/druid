@@ -88,8 +88,8 @@ impl Label {
 
 impl<T: Data> Widget<T> for Label {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, _data: &T, env: &Env) {
-        // let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
-        // paint_ctx.fill(dbg_rect, &env.get(theme::SELECTION_COLOR));
+        let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
+        paint_ctx.fill(dbg_rect, &env.get(theme::SELECTION_COLOR));
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(paint_ctx.text(), font_name, font_size);
@@ -124,7 +124,7 @@ impl<T: Data> Widget<T> for Label {
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(layout_ctx.text, font_name, font_size);
         // This magical 1.2 constant helps center the text vertically in the rect it's given
-        bc.constrain((text_layout.width(), font_size * 1.2))
+        Size::new(text_layout.width(), font_size * 1.2)
     }
 
     fn event(
@@ -215,25 +215,34 @@ impl<T: Data> Widget<T> for Button<T> {
         data: &T,
         env: &Env,
     ) -> Size {
+        let new_bc = BoxConstraints::new(Size::new(0.0, 0.0), bc.min());
+        let label_size = self.label.layout(layout_ctx, &new_bc, data, env);
         if let Some(button_size) = self.size {
-            self.label.layout(layout_ctx, &bc, data, env);
-            self.label
-                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, button_size));
+            let hpad = (button_size.width / 2.) - (label_size.width / 2.);
+            let vpad = (button_size.height / 2.) - (label_size.height / 2.);
+            self.label.set_layout_rect(Rect::from_origin_size(
+                Point::ORIGIN + Vec2::new(hpad, vpad),
+                label_size,
+            ));
             return button_size;
         } else if let Some(padding) = self.padding {
             let hpad = padding.0;
             let vpad = padding.1;
-            let new_bc = BoxConstraints::new(Size::new(0.0, 0.0), bc.min());
-            let size = self.label.layout(layout_ctx, &new_bc, data, env);
-            let padded_size = (size.to_vec2() + Vec2::new(hpad * 2., vpad * 2.)).to_size();
-            self.label
-                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, padded_size));
+            let padded_size = (label_size.to_vec2() + Vec2::new(hpad * 2., vpad * 2.)).to_size();
+            self.label.set_layout_rect(Rect::from_origin_size(
+                Point::ORIGIN + Vec2::new(hpad, vpad),
+                label_size,
+            ));
             return padded_size;
         } else {
-            let size = self.label.layout(layout_ctx, &bc, data, env);
-            self.label
-                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, size));
-            return Size::new(size.width, size.height);
+            let button_size = bc.max();
+            let hpad = (button_size.width / 2.) - (label_size.width / 2.);
+            let vpad = (button_size.height / 2.) - (label_size.height / 2.);
+            self.label.set_layout_rect(Rect::from_origin_size(
+                Point::ORIGIN + Vec2::new(hpad, vpad),
+                label_size,
+            ));
+            return bc.constrain(Size::new(label_size.width, label_size.height));
         }
     }
 

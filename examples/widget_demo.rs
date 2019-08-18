@@ -103,20 +103,20 @@ fn main() {
     let slider = Slider::default();
 
     let button_1 = ActionWrapper::new(
-        Button::shrink_to_fit("Increment"),
+        Button::shrink_to_fit("Shrink to fit"),
         move |data: &mut f64, _env| *data += 0.1,
     );
     let button_2 = ActionWrapper::new(
-        Button::sized("Decrement", 200.0, 50.0),
+        Button::sized("Sized", 200.0, 50.0),
         move |data: &mut f64, _env| *data -= 0.1,
     );
 
-    let button_3 = ActionWrapper::new(Button::new("+= .05"), move |data: &mut f64, _env| {
+    let button_3 = ActionWrapper::new(Button::new("Flex"), move |data: &mut f64, _env| {
         *data += 0.05
     });
 
     let button_4 = ActionWrapper::new(
-        Button::padded("-= .05", 10., 5.),
+        Button::padded("Padded", 10., 5.),
         move |data: &mut f64, _env| *data -= 0.05,
     );
 
@@ -138,16 +138,16 @@ fn main() {
         },
     );
 
-    col.add_child(Padding::uniform(5.0, bar), 1.0);
-    col.add_child(Padding::uniform(5.0, slider), 1.0);
-    col.add_child(Padding::uniform(5.0, label_1), 1.0);
-    col.add_child(Padding::uniform(5.0, label_2), 1.0);
+    // col.add_child(Padding::uniform(5.0, bar), 1.0);
+    // col.add_child(Padding::uniform(5.0, slider), 1.0);
+    // col.add_child(Padding::uniform(5.0, label_1), 1.0);
+    // col.add_child(Padding::uniform(5.0, label_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_3), 1.0);
     col.add_child(Padding::uniform(5.0, button_4), 1.0);
-    col.add_child(Padding::uniform(5.0, textbox), 1.0);
-    col.add_child(Padding::uniform(5.0, checkbox), 1.0);
+    // col.add_child(Padding::uniform(5.0, textbox), 1.0);
+    // col.add_child(Padding::uniform(5.0, checkbox), 1.0);
 
     let state = UiState::new(col, 0.7f64);
     builder.set_title("Widget demo");
