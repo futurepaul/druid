@@ -50,7 +50,7 @@ pub struct Label {
 pub struct Button<T: Data> {
     pub label: WidgetPod<T, Box<dyn Widget<T>>>,
     pub size: Option<Size>,
-    pub padded: bool,
+    pub padding: Option<(f64, f64)>,
 }
 
 /// A label with dynamic text.
@@ -145,7 +145,7 @@ impl<T: Data> Button<T> {
         Button {
             label: WidgetPod::new(Label::new(label)).boxed(),
             size: None,
-            padded: false,
+            padding: None,
         }
     }
 
@@ -153,7 +153,7 @@ impl<T: Data> Button<T> {
         Button {
             label: WidgetPod::new(Label::new(label)).boxed(),
             size: None,
-            padded: true,
+            padding: Some((0.0, 0.0)),
         }
     }
 
@@ -161,7 +161,15 @@ impl<T: Data> Button<T> {
         Button {
             label: WidgetPod::new(Label::new(label)).boxed(),
             size: Some(Size::new(width, height)),
-            padded: false,
+            padding: None,
+        }
+    }
+
+    pub fn padded(label: impl Into<String>, hpad: f64, vpad: f64) -> Button<T> {
+        Button {
+            label: WidgetPod::new(Label::new(label)).boxed(),
+            size: None,
+            padding: Some((hpad, vpad)),
         }
     }
 }
@@ -212,9 +220,9 @@ impl<T: Data> Widget<T> for Button<T> {
             self.label
                 .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, button_size));
             return button_size;
-        } else if self.padded {
-            let hpad = 10.;
-            let vpad = 5.;
+        } else if let Some(padding) = self.padding {
+            let hpad = padding.0;
+            let vpad = padding.1;
             let new_bc = BoxConstraints::new(Size::new(0.0, 0.0), bc.min());
             let size = self.label.layout(layout_ctx, &new_bc, data, env);
             let padded_size = (size.to_vec2() + Vec2::new(hpad * 2., vpad * 2.)).to_size();
