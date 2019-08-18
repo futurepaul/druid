@@ -21,7 +21,7 @@ use crate::{
     RenderContext, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::kurbo::{Point, Rect, RoundedRect, Size};
+use crate::kurbo::{Point, Rect, RoundedRect, Size, Vec2};
 use crate::piet::{
     FontBuilder, LinearGradient, PietText, PietTextLayout, Text, TextLayout, TextLayoutBuilder,
     UnitPoint,
@@ -50,6 +50,7 @@ pub struct Label {
 pub struct Button<T: Data> {
     pub label: WidgetPod<T, Box<dyn Widget<T>>>,
     pub size: Option<Size>,
+    pub padded: bool,
 }
 
 /// A label with dynamic text.
@@ -87,6 +88,8 @@ impl Label {
 
 impl<T: Data> Widget<T> for Label {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, _data: &T, env: &Env) {
+        // let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
+        // paint_ctx.fill(dbg_rect, &env.get(theme::SELECTION_COLOR));
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(paint_ctx.text(), font_name, font_size);
@@ -142,6 +145,15 @@ impl<T: Data> Button<T> {
         Button {
             label: WidgetPod::new(Label::new(label)).boxed(),
             size: None,
+            padded: false,
+        }
+    }
+
+    pub fn shrink_to_fit(label: impl Into<String>) -> Button<T> {
+        Button {
+            label: WidgetPod::new(Label::new(label)).boxed(),
+            size: None,
+            padded: true,
         }
     }
 
@@ -149,6 +161,7 @@ impl<T: Data> Button<T> {
         Button {
             label: WidgetPod::new(Label::new(label)).boxed(),
             size: Some(Size::new(width, height)),
+            padded: false,
         }
     }
 }
@@ -199,6 +212,15 @@ impl<T: Data> Widget<T> for Button<T> {
             self.label
                 .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, button_size));
             return button_size;
+        } else if self.padded {
+            let hpad = 10.;
+            let vpad = 5.;
+            let new_bc = BoxConstraints::new(Size::new(0.0, 0.0), bc.min());
+            let size = self.label.layout(layout_ctx, &new_bc, data, env);
+            let padded_size = (size.to_vec2() + Vec2::new(hpad * 2., vpad * 2.)).to_size();
+            self.label
+                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, padded_size));
+            return padded_size;
         } else {
             let size = self.label.layout(layout_ctx, &bc, data, env);
             self.label
