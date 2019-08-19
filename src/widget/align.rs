@@ -14,9 +14,10 @@
 
 //! A widget that aligns its child (for example, centering it).
 
+use crate::theme;
 use crate::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx, Point,
-    Rect, Size, UpdateCtx, Widget, WidgetPod,
+    Rect, RenderContext, Size, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::piet::UnitPoint;
@@ -43,7 +44,9 @@ impl<T: Data> Align<T> {
 }
 
 impl<T: Data> Widget<T> for Align<T> {
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, _base_state: &BaseState, data: &T, env: &Env) {
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
+        let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
+        paint_ctx.fill(dbg_rect, &env.get(theme::FOREGROUND_LIGHT));
         self.child.paint_with_offset(paint_ctx, data, env);
     }
 

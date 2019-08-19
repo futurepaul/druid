@@ -27,23 +27,11 @@ use crate::piet::{
     UnitPoint,
 };
 use crate::theme;
-
-enum HorizontalAlignment {
-    Leading,
-    Center,
-    Trailing,
-}
-
-enum VerticalAlignment {
-    Top,
-    Center,
-    Bottom,
-}
+use crate::widget::{Align, Padding};
 
 /// A label with static text.
 pub struct Label {
     text: String,
-    align: (HorizontalAlignment, VerticalAlignment),
 }
 
 /// A button with a static label.
@@ -66,10 +54,7 @@ impl Label {
     /// Discussion question: should this return Label or a wrapped
     /// widget (with WidgetPod)?
     pub fn new(text: impl Into<String>) -> Label {
-        Label {
-            text: text.into(),
-            align: (HorizontalAlignment::Center, VerticalAlignment::Center),
-        }
+        Label { text: text.into() }
     }
 
     fn get_layout(&self, t: &mut PietText, font_name: &str, font_size: f64) -> PietTextLayout {
@@ -93,24 +78,7 @@ impl<T: Data> Widget<T> for Label {
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(paint_ctx.text(), font_name, font_size);
-        let (x, y) = match self.align {
-            (HorizontalAlignment::Center, VerticalAlignment::Center) => {
-                let x = (base_state.size().width / 2.) - (text_layout.width() / 2.);
-                let y = (base_state.size().height / 2.) - (font_size * 1.2 / 2.);
-                (x, y)
-            }
-            (HorizontalAlignment::Leading, VerticalAlignment::Top) => (0.0, 0.0),
-            (HorizontalAlignment::Trailing, VerticalAlignment::Top) => {
-                let x = base_state.size().width - text_layout.width();
-                (x, 0.0)
-            }
-            _ => (0.0, 0.0),
-        };
-        paint_ctx.draw_text(
-            &text_layout,
-            (x, font_size + y),
-            &env.get(theme::LABEL_COLOR),
-        );
+        paint_ctx.draw_text(&text_layout, (0.0, font_size), &env.get(theme::LABEL_COLOR));
     }
 
     fn layout(
@@ -140,7 +108,7 @@ impl<T: Data> Widget<T> for Label {
     fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: Option<&T>, _data: &T, _env: &Env) {}
 }
 
-impl<T: Data> Button<T> {
+impl<T: Data + 'static> Button<T> {
     pub fn new(label: impl Into<String>) -> Button<T> {
         Button {
             label: WidgetPod::new(Label::new(label)).boxed(),
@@ -148,10 +116,17 @@ impl<T: Data> Button<T> {
             padding: None,
         }
     }
+    pub fn centered(label: impl Into<String>) -> Button<T> {
+        Button {
+            label: WidgetPod::new(Align::centered(Label::new(label))).boxed(),
+            size: None,
+            padding: None,
+        }
+    }
 
     pub fn shrink_to_fit(label: impl Into<String>) -> Button<T> {
         Button {
-            label: WidgetPod::new(Label::new(label)).boxed(),
+            label: WidgetPod::new(Align::centered(Label::new(label))).boxed(),
             size: None,
             padding: Some((0.0, 0.0)),
         }
@@ -159,7 +134,7 @@ impl<T: Data> Button<T> {
 
     pub fn sized(label: impl Into<String>, width: f64, height: f64) -> Button<T> {
         Button {
-            label: WidgetPod::new(Label::new(label)).boxed(),
+            label: WidgetPod::new(Align::centered(Label::new(label))).boxed(),
             size: Some(Size::new(width, height)),
             padding: None,
         }
@@ -167,7 +142,8 @@ impl<T: Data> Button<T> {
 
     pub fn padded(label: impl Into<String>, hpad: f64, vpad: f64) -> Button<T> {
         Button {
-            label: WidgetPod::new(Label::new(label)).boxed(),
+            //TODO: honor distinct vertical padding
+            label: WidgetPod::new(Padding::uniform(hpad, Label::new(label))).boxed(),
             size: None,
             padding: Some((hpad, vpad)),
         }
@@ -215,34 +191,21 @@ impl<T: Data> Widget<T> for Button<T> {
         data: &T,
         env: &Env,
     ) -> Size {
-        let new_bc = BoxConstraints::new(Size::new(0.0, 0.0), bc.min());
-        let label_size = self.label.layout(layout_ctx, &new_bc, data, env);
         if let Some(button_size) = self.size {
-            let hpad = (button_size.width / 2.) - (label_size.width / 2.);
-            let vpad = (button_size.height / 2.) - (label_size.height / 2.);
-            self.label.set_layout_rect(Rect::from_origin_size(
-                Point::ORIGIN + Vec2::new(hpad, vpad),
-                label_size,
-            ));
-            return button_size;
+            // Pass an exact size to the label
+            let tight_bc = BoxConstraints::tight(button_size);
+            let label_size = self.label.layout(layout_ctx, &tight_bc, data, env);
+            return label_size;
         } else if let Some(padding) = self.padding {
-            let hpad = padding.0;
-            let vpad = padding.1;
-            let padded_size = (label_size.to_vec2() + Vec2::new(hpad * 2., vpad * 2.)).to_size();
-            self.label.set_layout_rect(Rect::from_origin_size(
-                Point::ORIGIN + Vec2::new(hpad, vpad),
-                label_size,
-            ));
-            return padded_size;
+            // By loosening the constraint, we let the label figure out its own size
+            let label_size = self.label.layout(layout_ctx, &bc.loosen(), data, env);
+            return label_size;
         } else {
-            let button_size = bc.max();
-            let hpad = (button_size.width / 2.) - (label_size.width / 2.);
-            let vpad = (button_size.height / 2.) - (label_size.height / 2.);
-            self.label.set_layout_rect(Rect::from_origin_size(
-                Point::ORIGIN + Vec2::new(hpad, vpad),
-                label_size,
-            ));
-            return bc.constrain(Size::new(label_size.width, label_size.height));
+            // Otherwise we just take up as much space as we can
+            let label_size = self.label.layout(layout_ctx, &bc, data, env);
+            self.label
+                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, label_size));
+            return bc.constrain(label_size);
         }
     }
 
