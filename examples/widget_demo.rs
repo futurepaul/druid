@@ -111,13 +111,18 @@ fn main() {
         move |data: &mut f64, _env| *data -= 0.1,
     );
 
-    let button_3 = ActionWrapper::new(Button::new("Flex"), move |data: &mut f64, _env| {
+    let button_3 = ActionWrapper::new(Button::new("Flex Basic"), move |data: &mut f64, _env| {
         *data += 0.05
     });
 
     let button_4 = ActionWrapper::new(
         Button::padded("Padded", 10., 5.),
         move |data: &mut f64, _env| *data -= 0.05,
+    );
+
+    let button_5 = ActionWrapper::new(
+        Button::centered("Flex Centered"),
+        move |data: &mut f64, _env| *data += 0.05,
     );
 
     let textbox = DynWidget::new(
@@ -146,6 +151,7 @@ fn main() {
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_3), 1.0);
     col.add_child(Padding::uniform(5.0, button_4), 1.0);
+    col.add_child(Padding::uniform(5.0, button_5), 1.0);
     // col.add_child(Padding::uniform(5.0, textbox), 1.0);
     // col.add_child(Padding::uniform(5.0, checkbox), 1.0);
 
