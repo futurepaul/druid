@@ -203,8 +203,6 @@ impl<T: Data> Widget<T> for Button<T> {
         } else {
             // Otherwise we just take up as much space as we can
             let label_size = self.label.layout(layout_ctx, &bc, data, env);
-            self.label
-                .set_layout_rect(Rect::from_origin_size(Point::ORIGIN, label_size));
             return bc.constrain(label_size);
         }
     }
