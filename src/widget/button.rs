@@ -196,7 +196,7 @@ impl<T: Data> Widget<T> for Button<T> {
             let tight_bc = BoxConstraints::tight(button_size);
             let label_size = self.label.layout(layout_ctx, &tight_bc, data, env);
             return label_size;
-        } else if let Some(padding) = self.padding {
+        } else if let Some(_) = self.padding {
             // By loosening the constraint, we let the label figure out its own size
             let label_size = self.label.layout(layout_ctx, &bc.loosen(), data, env);
             return label_size;
