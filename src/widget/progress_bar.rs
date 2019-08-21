@@ -76,9 +76,23 @@ impl Widget<f64> for ProgressBar {
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
         _data: &f64,
-        _env: &Env,
+        env: &Env,
     ) -> Size {
-        bc.constrain(bc.max())
+        bc.check("progress bar");
+
+        let default_width = 100.0;
+
+        if bc.max().width == std::f64::INFINITY {
+            return bc.constrain(Size::new(
+                default_width,
+                env.get(theme::HOW_TALL_THINGS_ARE),
+            ));
+        } else {
+            return bc.constrain(Size::new(
+                bc.max().width,
+                env.get(theme::HOW_TALL_THINGS_ARE),
+            ));
+        }
     }
 
     fn event(

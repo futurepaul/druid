@@ -70,9 +70,12 @@ impl Widget<bool> for CheckBox {
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
         _data: &bool,
-        _env: &Env,
+        env: &Env,
     ) -> Size {
-        bc.constrain(bc.max())
+        bc.constrain(Size::new(
+            env.get(theme::HOW_TALL_THINGS_ARE),
+            env.get(theme::HOW_TALL_THINGS_ARE),
+        ))
     }
 
     fn event(

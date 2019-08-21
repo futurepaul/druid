@@ -92,10 +92,10 @@ pub struct TextBox {
 }
 
 impl TextBox {
-    /// Create a new TextBox widget with a width set in pixels
-    pub fn new(width: f64) -> TextBox {
+    /// Create a new TextBox widget
+    pub fn new() -> TextBox {
         TextBox {
-            width,
+            width: 0.0,
             hscroll_offset: 0.,
             selection: Selection::caret(0),
             cursor_timer: TimerToken::INVALID,
@@ -326,7 +326,18 @@ impl Widget<String> for TextBox {
         _data: &String,
         env: &Env,
     ) -> Size {
-        bc.constrain((self.width, env.get(theme::TALLER_THINGS)))
+        let default_width = 100.0;
+        let size: Size;
+        if bc.max().width == std::f64::INFINITY {
+            eprintln!("textbox went infinite wide!");
+            self.width = default_width;
+            size = Size::new(default_width, env.get(theme::TALLER_THINGS))
+        } else {
+            //TODO: verify this is the right time to update
+            self.width = bc.max().width;
+            size = Size::new(bc.max().width, env.get(theme::TALLER_THINGS))
+        }
+        bc.constrain(size)
     }
 
     fn event(

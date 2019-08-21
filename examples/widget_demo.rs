@@ -17,12 +17,12 @@ use std::marker::PhantomData;
 use druid::kurbo::Size;
 use druid::shell::{runloop, WindowBuilder};
 use druid::widget::{
-    ActionWrapper, Button, CheckBox, Column, DynLabel, Label, Padding, ProgressBar, Row, Slider,
-    TextBox,
+    ActionWrapper, Align, Button, CheckBox, Column, DynLabel, Label, Padding, ProgressBar, Row,
+    Scroll, Slider, TextBox,
 };
 use druid::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx, UiMain,
-    UiState, UpdateCtx, Widget, WidgetPod,
+    UiState, UpdateCtx, Widget,
 };
 
 //T is what the app gives us
@@ -103,11 +103,11 @@ fn main() {
     let slider = Slider::default();
 
     let button_1 = ActionWrapper::new(
-        Button::shrink_to_fit("Shrink to fit"),
+        Align::centered(Button::shrink_to_fit("Shrink to fit")),
         move |data: &mut f64, _env| *data += 0.1,
     );
     let button_2 = ActionWrapper::new(
-        Button::sized("Sized", 200.0, 50.0),
+        Button::sized("Sized", 200.0, 100.0),
         move |data: &mut f64, _env| *data -= 0.1,
     );
 
@@ -126,7 +126,7 @@ fn main() {
     );
 
     let textbox = DynWidget::new(
-        TextBox::new(200.),
+        TextBox::new(),
         |input: &f64, _env| input.to_string(),
         |output: &String, _env| output.parse::<f64>().unwrap_or(0.),
     );
@@ -143,19 +143,21 @@ fn main() {
         },
     );
 
-    // col.add_child(Padding::uniform(5.0, bar), 1.0);
-    // col.add_child(Padding::uniform(5.0, slider), 1.0);
-    // col.add_child(Padding::uniform(5.0, label_1), 1.0);
-    // col.add_child(Padding::uniform(5.0, label_2), 1.0);
+    col.add_child(Padding::uniform(5.0, bar), 1.0);
+    col.add_child(Padding::uniform(5.0, slider), 1.0);
+    col.add_child(Padding::uniform(5.0, label_1), 1.0);
+    col.add_child(Padding::uniform(5.0, label_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_3), 1.0);
-    col.add_child(Padding::uniform(5.0, button_4), 1.0);
+    col.add_child(Align::centered(Padding::uniform(5.0, button_4)), 1.0);
     col.add_child(Padding::uniform(5.0, button_5), 1.0);
-    // col.add_child(Padding::uniform(5.0, textbox), 1.0);
-    // col.add_child(Padding::uniform(5.0, checkbox), 1.0);
+    col.add_child(Padding::uniform(5.0, textbox), 1.0);
+    col.add_child(Padding::uniform(5.0, checkbox), 1.0);
 
-    let state = UiState::new(col, 0.7f64);
+    let root = Padding::uniform(30.0, col);
+
+    let state = UiState::new(root, 0.7f64);
     builder.set_title("Widget demo");
     builder.set_handler(Box::new(UiMain::new(state)));
     let window = builder.build().unwrap();

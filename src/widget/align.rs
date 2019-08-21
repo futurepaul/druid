@@ -14,13 +14,12 @@
 
 //! A widget that aligns its child (for example, centering it).
 
-use crate::theme;
 use crate::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx, Point,
     Rect, RenderContext, Size, UpdateCtx, Widget, WidgetPod,
 };
 
-use crate::piet::UnitPoint;
+use crate::piet::{Color, UnitPoint};
 
 /// A widget that aligns its child.
 pub struct Align<T: Data> {
@@ -46,7 +45,8 @@ impl<T: Data> Align<T> {
 impl<T: Data> Widget<T> for Align<T> {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
         let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
-        paint_ctx.fill(dbg_rect, &env.get(theme::FOREGROUND_LIGHT));
+        let dbg_color = Color::rgba8(0x00, 0xff, 0xff, 0x33);
+        paint_ctx.fill(dbg_rect, &dbg_color);
         self.child.paint_with_offset(paint_ctx, data, env);
     }
 
@@ -57,15 +57,23 @@ impl<T: Data> Widget<T> for Align<T> {
         data: &T,
         env: &Env,
     ) -> Size {
+        bc.check("align");
+        if bc.max().width == std::f64::INFINITY {
+            eprintln!("align went infinite wide!");
+        }
+        if bc.max().height == std::f64::INFINITY {
+            eprintln!("align went infinite tall!");
+        }
         let size = self.child.layout(layout_ctx, &bc.loosen(), data, env);
         let my_size = bc.constrain(size);
-        let extra_size = (my_size.to_vec2() - size.to_vec2()).to_size();
+        let extra_width = (my_size.width - size.width).max(0.);
+        let extra_height = (my_size.height - size.height).max(0.);
         let origin = self
             .align
-            .resolve(Rect::from_origin_size(Point::ORIGIN, extra_size));
+            .resolve(Rect::new(0., 0., extra_width, extra_height));
         self.child
             .set_layout_rect(Rect::from_origin_size(origin, size));
-        my_size
+        bc.constrain(my_size)
     }
 
     fn event(

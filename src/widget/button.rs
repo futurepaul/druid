@@ -18,10 +18,10 @@ use std::marker::PhantomData;
 
 use crate::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx,
-    RenderContext, UpdateCtx, Widget, WidgetPod,
+    RenderContext, UpdateCtx, Widget,
 };
 
-use crate::kurbo::{Point, Rect, RoundedRect, Size, Vec2};
+use crate::kurbo::{Point, Rect, RoundedRect, Size};
 use crate::piet::{
     FontBuilder, LinearGradient, PietText, PietTextLayout, Text, TextLayout, TextLayoutBuilder,
     UnitPoint,
@@ -35,8 +35,8 @@ pub struct Label {
 }
 
 /// A button with a static label.
-pub struct Button<T: Data> {
-    pub label: WidgetPod<T, Box<dyn Widget<T>>>,
+pub struct Button<T> {
+    pub label: Box<dyn Widget<T>>,
     pub size: Option<Size>,
     pub padding: Option<(f64, f64)>,
 }
@@ -92,7 +92,7 @@ impl<T: Data> Widget<T> for Label {
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(layout_ctx.text, font_name, font_size);
         // This magical 1.2 constant helps center the text vertically in the rect it's given
-        Size::new(text_layout.width(), font_size * 1.2)
+        bc.constrain(Size::new(text_layout.width(), font_size * 1.2))
     }
 
     fn event(
@@ -111,14 +111,14 @@ impl<T: Data> Widget<T> for Label {
 impl<T: Data + 'static> Button<T> {
     pub fn new(label: impl Into<String>) -> Button<T> {
         Button {
-            label: WidgetPod::new(Label::new(label)).boxed(),
+            label: Box::new(Label::new(label)),
             size: None,
             padding: None,
         }
     }
     pub fn centered(label: impl Into<String>) -> Button<T> {
         Button {
-            label: WidgetPod::new(Align::centered(Label::new(label))).boxed(),
+            label: Box::new(Align::centered(Label::new(label))),
             size: None,
             padding: None,
         }
@@ -126,7 +126,7 @@ impl<T: Data + 'static> Button<T> {
 
     pub fn shrink_to_fit(label: impl Into<String>) -> Button<T> {
         Button {
-            label: WidgetPod::new(Align::centered(Label::new(label))).boxed(),
+            label: Box::new(Label::new(label)),
             size: None,
             padding: Some((0.0, 0.0)),
         }
@@ -134,7 +134,7 @@ impl<T: Data + 'static> Button<T> {
 
     pub fn sized(label: impl Into<String>, width: f64, height: f64) -> Button<T> {
         Button {
-            label: WidgetPod::new(Align::centered(Label::new(label))).boxed(),
+            label: Box::new(Align::centered(Label::new(label))),
             size: Some(Size::new(width, height)),
             padding: None,
         }
@@ -143,7 +143,7 @@ impl<T: Data + 'static> Button<T> {
     pub fn padded(label: impl Into<String>, hpad: f64, vpad: f64) -> Button<T> {
         Button {
             //TODO: honor distinct vertical padding
-            label: WidgetPod::new(Padding::uniform(hpad, Label::new(label))).boxed(),
+            label: Box::new(Padding::uniform(hpad, Label::new(label))),
             size: None,
             padding: Some((hpad, vpad)),
         }
@@ -181,7 +181,7 @@ impl<T: Data> Widget<T> for Button<T> {
 
         paint_ctx.fill(rounded_rect, &bg_gradient);
 
-        self.label.paint_with_offset(paint_ctx, data, env);
+        self.label.paint(paint_ctx, base_state, data, env);
     }
 
     fn layout(
@@ -191,19 +191,26 @@ impl<T: Data> Widget<T> for Button<T> {
         data: &T,
         env: &Env,
     ) -> Size {
+        bc.check("button");
         if let Some(button_size) = self.size {
             // Pass an exact size to the label
-            let tight_bc = BoxConstraints::tight(button_size);
+            let tight_bc = BoxConstraints::tight(bc.constrain(button_size));
             let label_size = self.label.layout(layout_ctx, &tight_bc, data, env);
-            return label_size;
+            return bc.constrain(label_size);
         } else if let Some(_) = self.padding {
             // By loosening the constraint, we let the label figure out its own size
             let label_size = self.label.layout(layout_ctx, &bc.loosen(), data, env);
-            return label_size;
+            return bc.constrain(label_size);
         } else {
             // Otherwise we just take up as much space as we can
-            let label_size = self.label.layout(layout_ctx, &bc, data, env);
-            return bc.constrain(label_size);
+            let mut new_bc = bc.clone();
+            if bc.max().width == std::f64::INFINITY {
+                new_bc.max.width = 100.0;
+            }
+
+            let label_size = self.label.layout(layout_ctx, &new_bc, data, env);
+
+            bc.constrain(label_size)
         }
     }
 
@@ -285,7 +292,8 @@ impl<T: Data, F: FnMut(&T, &Env) -> String> Widget<T> for DynLabel<T, F> {
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
         let text_layout = self.get_layout(layout_ctx.text, font_name, font_size, data, env);
-        bc.constrain((text_layout.width(), 17.0))
+        // This magical 1.2 constant helps center the text vertically in the rect it's given
+        bc.constrain(Size::new(text_layout.width(), font_size * 1.2))
     }
 
     fn event(
