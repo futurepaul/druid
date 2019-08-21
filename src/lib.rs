@@ -919,6 +919,20 @@ impl BoxConstraints {
     pub fn is_height_bounded(&self) -> bool {
         self.max.height.is_finite()
     }
+    
+    /// Check to see if these constraints are legit.
+    pub fn check(&self, name: &str) {
+        if !(0.0 <= self.min.width
+            && self.min.width <= self.max.width
+            && self.max.width <= std::f64::INFINITY)
+            || !(0.0 <= self.min.height
+                && self.min.height <= self.max.height
+                && self.max.height <= std::f64::INFINITY)
+        {
+            eprintln!("Bad BoxConstraints passed to {}:", name);
+            eprintln!("{:?}", self);
+        }
+    }
 }
 
 impl<'a, 'b> EventCtx<'a, 'b> {

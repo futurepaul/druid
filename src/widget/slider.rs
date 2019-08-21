@@ -125,9 +125,17 @@ impl Widget<f64> for Slider {
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
         _data: &f64,
-        _env: &Env,
+        env: &Env,
     ) -> Size {
-        bc.constrain(bc.max())
+        bc.check("slider");
+
+        let default_width = 100.0;
+
+        if bc.max().width == std::f64::INFINITY {
+            return bc.constrain(Size::new(default_width, env.get(theme::TALLER_THINGS)));
+        } else {
+            return bc.constrain(Size::new(bc.max().width, env.get(theme::TALLER_THINGS)));
+        }
     }
 
     fn event(
