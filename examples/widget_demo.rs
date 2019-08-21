@@ -155,7 +155,8 @@ fn main() {
     col.add_child(Padding::uniform(5.0, textbox), 1.0);
     col.add_child(Padding::uniform(5.0, checkbox), 1.0);
 
-    let root = Padding::uniform(30.0, col);
+    let root = Scroll::new(Padding::uniform(30.0, col));
+    // let root = Align::centered(root);
 
     let state = UiState::new(root, 0.7f64);
     builder.set_title("Widget demo");

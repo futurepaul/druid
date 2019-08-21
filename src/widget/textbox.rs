@@ -329,7 +329,6 @@ impl Widget<String> for TextBox {
         let default_width = 100.0;
         let size: Size;
         if bc.max().width == std::f64::INFINITY {
-            eprintln!("textbox went infinite wide!");
             self.width = default_width;
             size = Size::new(default_width, env.get(theme::TALLER_THINGS))
         } else {

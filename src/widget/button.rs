@@ -204,10 +204,9 @@ impl<T: Data> Widget<T> for Button<T> {
         } else {
             // Otherwise we just take up as much space as we can
             let mut new_bc = bc.clone();
-            if bc.max().width == std::f64::INFINITY {
-                new_bc.max.width = 100.0;
+            if !(bc.max().width == std::f64::INFINITY) {
+                new_bc.min = new_bc.max;
             }
-
             let label_size = self.label.layout(layout_ctx, &new_bc, data, env);
 
             bc.constrain(label_size)
