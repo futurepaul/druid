@@ -15,6 +15,7 @@
 use std::marker::PhantomData;
 
 use druid::kurbo::Size;
+use druid::piet::UnitPoint;
 use druid::shell::{runloop, WindowBuilder};
 use druid::widget::{
     ActionWrapper, Align, Button, CheckBox, Column, DynLabel, Label, Padding, ProgressBar, Row,
@@ -150,12 +151,18 @@ fn main() {
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
     col.add_child(Padding::uniform(5.0, button_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_3), 1.0);
-    col.add_child(Align::centered(Padding::uniform(5.0, button_4)), 1.0);
+    col.add_child(
+        Align::centered(Align::new(
+            UnitPoint::new(0.9, 0.4),
+            Padding::uniform(5.0, button_4),
+        )),
+        1.0,
+    );
     col.add_child(Padding::uniform(5.0, button_5), 1.0);
     col.add_child(Padding::uniform(5.0, textbox), 1.0);
     col.add_child(Padding::uniform(5.0, checkbox), 1.0);
 
-    let root = Scroll::new(Padding::uniform(30.0, col));
+    let root = Align::centered(col);
     // let root = Align::centered(root);
 
     let state = UiState::new(root, 0.7f64);
