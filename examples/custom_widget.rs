@@ -109,8 +109,8 @@ impl Widget<String> for CustomWidget {
         _data: &String,
         _env: &Env,
     ) -> Size {
-        // You can return any Size.
-        // Flexible widgets are based on the BoxConstraints passed by their parent widget.
+        // Widgets need to return a size within the BoxConstraints passed by their parent widget.
+        // Here we're saying: "I'm as big as the maximum you'll allow."
         bc.max()
     }
 
