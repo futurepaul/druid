@@ -26,8 +26,10 @@ use crate::{
 use crate::kurbo::{Affine, Line, Point, RoundedRect, Size, Vec2};
 use crate::piet::{
     FontBuilder, PietText, PietTextLayout, RenderContext, Text, TextLayout, TextLayoutBuilder,
+    UnitPoint,
 };
 use crate::theme;
+use crate::widget::Align;
 
 use crate::unicode_segmentation::GraphemeCursor;
 
@@ -80,10 +82,28 @@ impl Selection {
     pub fn range(self) -> Range<usize> {
         self.min()..self.max()
     }
+
+    /// Constraint selection to be not greater than input string
+    pub fn constraint_to(mut self, s: &str) -> Self {
+        let s_len = s.chars().count();
+        self.start = min(self.start, s_len);
+        self.end = min(self.end, s_len);
+        self
+    }
+}
+
+/// A TextBox widget for editing strings
+#[derive(Debug, Clone)]
+pub struct TextBox;
+
+impl TextBox {
+    pub fn new() -> impl Widget<String> {
+        Align::new(UnitPoint::LEFT, TextBoxRaw::new())
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct TextBox {
+pub struct TextBoxRaw {
     width: f64,
     hscroll_offset: f64,
     selection: Selection,
@@ -91,10 +111,10 @@ pub struct TextBox {
     cursor_on: bool,
 }
 
-impl TextBox {
+impl TextBoxRaw {
     /// Create a new TextBox widget
-    pub fn new() -> TextBox {
-        TextBox {
+    pub fn new() -> TextBoxRaw {
+        TextBoxRaw {
             width: 0.0,
             hscroll_offset: 0.,
             selection: Selection::caret(0),
@@ -121,8 +141,9 @@ impl TextBox {
 
     fn insert(&mut self, src: &mut String, new: &str) {
         // TODO: handle incomplete graphemes
-        src.replace_range(self.selection.range(), new);
-        self.selection = Selection::caret(self.selection.min() + new.len());
+        let selection = self.selection.constraint_to(src);
+        src.replace_range(selection.range(), new);
+        self.selection = Selection::caret(selection.min() + new.len());
     }
 
     fn cursor_to(&mut self, to: usize) {
@@ -220,7 +241,7 @@ impl TextBox {
     }
 }
 
-impl Widget<String> for TextBox {
+impl Widget<String> for TextBoxRaw {
     fn paint(
         &mut self,
         paint_ctx: &mut PaintCtx,

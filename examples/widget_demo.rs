@@ -18,8 +18,8 @@ use druid::kurbo::Size;
 use druid::piet::UnitPoint;
 use druid::shell::{runloop, WindowBuilder};
 use druid::widget::{
-    ActionWrapper, Align, Button, CheckBox, Column, DynLabel, Label, Padding, ProgressBar, Row,
-    Scroll, Slider, TextBox,
+    ActionWrapper, Align, Button, CheckBox, Column, DynLabel, Padding, ProgressBar, Scroll, Slider,
+    TextBox,
 };
 use druid::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx, UiMain,
@@ -100,8 +100,8 @@ fn main() {
     let mut col = Column::new();
     let label_1 = DynLabel::new(|data: &f64, _env| format!("actual value: {0:.2}", data));
     let label_2 = DynLabel::new(|data: &f64, _env| format!("2x the value: {0:.2}", data * 2.0));
-    let bar = ProgressBar::default();
-    let slider = Slider::default();
+    let bar = ProgressBar::new();
+    let slider = Slider::new();
 
     let button_1 = ActionWrapper::new(
         Align::centered(Button::shrink_to_fit("Shrink to fit")),
@@ -133,7 +133,7 @@ fn main() {
     );
 
     let checkbox = DynWidget::new(
-        CheckBox::default(),
+        CheckBox::new(),
         |input: &f64, _env| input.to_bits() == 1.0_f64.to_bits() || input > &1.0,
         |output: &bool, _env| {
             if *output {
@@ -149,7 +149,7 @@ fn main() {
     col.add_child(Padding::uniform(5.0, label_1), 1.0);
     col.add_child(Padding::uniform(5.0, label_2), 1.0);
     col.add_child(Padding::uniform(5.0, button_1), 1.0);
-    col.add_child(Padding::uniform(5.0, button_2), 1.0);
+    col.add_child(Padding::uniform(5.0, button_2), 0.0);
     col.add_child(Padding::uniform(5.0, button_3), 1.0);
     col.add_child(
         Align::centered(Align::new(
@@ -159,13 +159,13 @@ fn main() {
         1.0,
     );
     col.add_child(Padding::uniform(5.0, button_5), 1.0);
-    col.add_child(Padding::uniform(5.0, textbox), 1.0);
-    col.add_child(Padding::uniform(5.0, checkbox), 1.0);
+    col.add_child(Padding::uniform(5.0, Align::centered(textbox)), 1.0);
+    col.add_child(Padding::uniform(5.0, Align::centered(checkbox)), 0.0);
 
     let root = Align::centered(col);
     // let root = Align::centered(root);
 
-    let state = UiState::new(root, 0.7f64);
+    let state = UiState::new(Scroll::new(root), 0.7f64);
     builder.set_title("Widget demo");
     builder.set_handler(Box::new(UiMain::new(state)));
     let window = builder.build().unwrap();

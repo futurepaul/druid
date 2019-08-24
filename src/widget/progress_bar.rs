@@ -14,20 +14,31 @@
 
 //! A progress bar widget.
 
-use crate::kurbo::{Point, RoundedRect, Size};
-use crate::piet::{LinearGradient, RenderContext, UnitPoint};
+use crate::kurbo::{Point, Rect, RoundedRect, Size};
+use crate::piet::{Color, LinearGradient, RenderContext, UnitPoint};
 use crate::theme;
+use crate::widget::Align;
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
 
 /// A progress bar, displaying a numeric progress value.
-#[derive(Debug, Clone, Default)]
-pub struct ProgressBar {}
+#[derive(Debug, Clone)]
+pub struct ProgressBar;
 
-impl Widget<f64> for ProgressBar {
+impl ProgressBar {
+    pub fn new() -> impl Widget<f64> {
+        Align::new(UnitPoint::LEFT, ProgressBarRaw::default())
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ProgressBarRaw {}
+
+impl Widget<f64> for ProgressBarRaw {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &f64, env: &Env) {
         let clamped = data.max(0.0).min(1.0);
+
         let rounded_rect = RoundedRect::from_origin_size(
             Point::ORIGIN,
             (Size {

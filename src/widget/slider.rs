@@ -15,22 +15,32 @@
 //! A slider widget.
 
 use crate::kurbo::{Circle, Point, Rect, RoundedRect, Size};
-use crate::piet::{LinearGradient, RenderContext, UnitPoint};
+use crate::piet::{Color, LinearGradient, RenderContext, UnitPoint};
 use crate::theme;
+use crate::widget::Align;
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
 
 /// A slider, allowing interactive update of a numeric value.
+#[derive(Debug, Clone)]
+pub struct Slider;
+
+impl Slider {
+    pub fn new() -> impl Widget<f64> {
+        Align::new(UnitPoint::LEFT, SliderRaw::default())
+    }
+}
+
 #[derive(Debug, Clone, Default)]
-pub struct Slider {
+pub struct SliderRaw {
     width: f64,
     knob_pos: Point,
     knob_hovered: bool,
     x_offset: f64,
 }
 
-impl Slider {
+impl SliderRaw {
     fn knob_hit_test(&self, knob_width: f64, mouse_pos: Point) -> bool {
         let knob_circle = Circle::new(self.knob_pos, knob_width / 2.);
         if mouse_pos.distance(knob_circle.center) < knob_circle.radius {
@@ -46,7 +56,7 @@ impl Slider {
     }
 }
 
-impl Widget<f64> for Slider {
+impl Widget<f64> for SliderRaw {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &f64, env: &Env) {
         let clamped = data.max(0.0).min(1.0);
         let rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
@@ -132,9 +142,15 @@ impl Widget<f64> for Slider {
         let default_width = 100.0;
 
         if bc.max().width == std::f64::INFINITY {
-            return bc.constrain(Size::new(default_width, env.get(theme::TALLER_THINGS)));
+            return bc.constrain(Size::new(
+                default_width,
+                env.get(theme::HOW_TALL_THINGS_ARE),
+            ));
         } else {
-            return bc.constrain(Size::new(bc.max().width, env.get(theme::TALLER_THINGS)));
+            return bc.constrain(Size::new(
+                bc.max().width,
+                env.get(theme::HOW_TALL_THINGS_ARE),
+            ));
         }
     }
 

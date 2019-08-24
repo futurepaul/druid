@@ -15,18 +15,29 @@
 //! A checkbox widget.
 
 use crate::kurbo::{BezPath, Point, RoundedRect, Size};
-use crate::piet::{LinearGradient, RenderContext, UnitPoint};
+use crate::piet::{LineCap, LineJoin, LinearGradient, RenderContext, StrokeStyle, UnitPoint};
 use crate::theme;
+use crate::widget::Align;
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
 
-#[derive(Debug, Clone, Default)]
-pub struct CheckBox {}
+#[derive(Debug, Clone)]
+pub struct CheckBox;
 
-impl Widget<bool> for CheckBox {
+impl CheckBox {
+    pub fn new() -> impl Widget<bool> {
+        Align::new(UnitPoint::LEFT, CheckBoxRaw::default())
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CheckBoxRaw;
+
+impl Widget<bool> for CheckBoxRaw {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &bool, env: &Env) {
         let size = env.get(theme::HOW_TALL_THINGS_ARE);
+
         let rect =
             RoundedRect::from_origin_size(Point::ORIGIN, Size::new(size, size).to_vec2(), 2.);
 
@@ -57,11 +68,11 @@ impl Widget<bool> for CheckBox {
             path.line_to((14.0, 5.0));
 
             //TODO: how do we do style now?
-            // let mut style = StrokeStyle::new();
-            // style.set_line_cap(LineCap::Round);
-            // style.set_line_join(LineJoin::Round);
+            let mut style = StrokeStyle::new();
+            style.set_line_cap(LineCap::Round);
+            style.set_line_join(LineJoin::Round);
 
-            paint_ctx.stroke(path, &env.get(theme::LABEL_COLOR), 2.);
+            paint_ctx.stroke_styled(path, &env.get(theme::LABEL_COLOR), 2., &style);
         }
     }
 
@@ -93,7 +104,6 @@ impl Widget<bool> for CheckBox {
             Event::MouseUp(_) => {
                 if ctx.is_active() {
                     ctx.set_active(false);
-                    ctx.invalidate();
                     if ctx.is_hot() {
                         if *data {
                             *data = false;
@@ -101,6 +111,7 @@ impl Widget<bool> for CheckBox {
                             *data = true;
                         }
                     }
+                    ctx.invalidate();
                 }
             }
             Event::MouseMoved(_) => {

@@ -23,8 +23,8 @@ use crate::{
 
 use crate::kurbo::{Point, Rect, RoundedRect, Size};
 use crate::piet::{
-    FontBuilder, LinearGradient, PietText, PietTextLayout, Text, TextLayout, TextLayoutBuilder,
-    UnitPoint,
+    Color, FontBuilder, LinearGradient, PietText, PietTextLayout, Text, TextLayout,
+    TextLayoutBuilder, UnitPoint,
 };
 use crate::theme;
 use crate::widget::{Align, Padding};
@@ -74,11 +74,23 @@ impl Label {
 impl<T: Data> Widget<T> for Label {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, _data: &T, env: &Env) {
         let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
-        paint_ctx.fill(dbg_rect, &env.get(theme::SELECTION_COLOR));
+        let dbg_color = Color::rgba8(0xff, 0x00, 0x00, 0x33);
+        paint_ctx.fill(dbg_rect, &dbg_color);
+
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
+
+        let align = UnitPoint::LEFT;
+        let origin = align.resolve(Rect::from_origin_size(
+            Point::ORIGIN,
+            Size::new(
+                base_state.size().width,
+                base_state.size().height + (font_size * 1.2) / 2.,
+            ),
+        ));
+
         let text_layout = self.get_layout(paint_ctx.text(), font_name, font_size);
-        paint_ctx.draw_text(&text_layout, (0.0, font_size), &env.get(theme::LABEL_COLOR));
+        paint_ctx.draw_text(&text_layout, origin, &env.get(theme::LABEL_COLOR));
     }
 
     fn layout(
@@ -154,6 +166,16 @@ impl<T: Data> Widget<T> for Button<T> {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
         let is_active = base_state.is_active();
         let is_hot = base_state.is_hot();
+
+        let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
+        let dbg_color = Color::rgba8(0x00, 0xff, 0xff, 0x33);
+        paint_ctx.fill(dbg_rect, &dbg_color);
+
+        // let rounded_rect: RoundedRect;
+        // if let Some(size) self.size {
+        //     let rounded_rect =
+        //     RoundedRect::from_origin_size(Point::ORIGIN, base_state.size().to_vec2(), 4.);
+        // }
 
         let rounded_rect =
             RoundedRect::from_origin_size(Point::ORIGIN, base_state.size().to_vec2(), 4.);
@@ -274,11 +296,21 @@ impl<T: Data, F: FnMut(&T, &Env) -> String> DynLabel<T, F> {
 }
 
 impl<T: Data, F: FnMut(&T, &Env) -> String> Widget<T> for DynLabel<T, F> {
-    fn paint(&mut self, paint_ctx: &mut PaintCtx, _base_state: &BaseState, data: &T, env: &Env) {
+    fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
         let font_name = env.get(theme::FONT_NAME);
         let font_size = env.get(theme::TEXT_SIZE_NORMAL);
+
+        let align = UnitPoint::LEFT;
+        let origin = align.resolve(Rect::from_origin_size(
+            Point::ORIGIN,
+            Size::new(
+                base_state.size().width,
+                base_state.size().height + (font_size * 1.2) / 2.,
+            ),
+        ));
+
         let text_layout = self.get_layout(paint_ctx.text(), font_name, font_size, data, env);
-        paint_ctx.draw_text(&text_layout, (0., font_size), &env.get(theme::LABEL_COLOR));
+        paint_ctx.draw_text(&text_layout, origin, &env.get(theme::LABEL_COLOR));
     }
 
     fn layout(
