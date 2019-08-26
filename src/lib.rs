@@ -919,7 +919,7 @@ impl BoxConstraints {
     pub fn is_height_bounded(&self) -> bool {
         self.max.height.is_finite()
     }
-    
+
     /// Check to see if these constraints are legit.
     pub fn check(&self, name: &str) {
         if !(0.0 <= self.min.width

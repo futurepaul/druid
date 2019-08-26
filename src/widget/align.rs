@@ -21,10 +21,16 @@ use crate::{
 
 use crate::piet::{Color, UnitPoint};
 
+enum Axis {
+    Horizontal,
+    Vertical,
+}
+
 /// A widget that aligns its child.
 pub struct Align<T: Data> {
     align: UnitPoint,
     child: WidgetPod<T, Box<dyn Widget<T>>>,
+    axis: Option<Axis>,
 }
 
 impl<T: Data> Align<T> {
@@ -37,6 +43,25 @@ impl<T: Data> Align<T> {
         Align {
             align,
             child: WidgetPod::new(child).boxed(),
+            axis: None,
+        }
+    }
+
+    /// Align only in the horizontal axis, keeping the child's size in the vertical.
+    pub fn horizontal(align: UnitPoint, child: impl Widget<T> + 'static) -> Align<T> {
+        Align {
+            align,
+            child: WidgetPod::new(child).boxed(),
+            axis: Some(Axis::Horizontal),
+        }
+    }
+
+    /// Align only in the vertical axis, keeping the child's size in the horizontal.
+    pub fn vertical(align: UnitPoint, child: impl Widget<T> + 'static) -> Align<T> {
+        Align {
+            align,
+            child: WidgetPod::new(child).boxed(),
+            axis: Some(Axis::Vertical),
         }
     }
 
@@ -48,9 +73,10 @@ impl<T: Data> Align<T> {
 
 impl<T: Data> Widget<T> for Align<T> {
     fn paint(&mut self, paint_ctx: &mut PaintCtx, base_state: &BaseState, data: &T, env: &Env) {
-        // let dbg_rect = Rect::from_origin_size(Point::ORIGIN, base_state.size());
-        // let dbg_color = Color::rgba8(0x00, 0xff, 0xff, 0x33);
-        // paint_ctx.fill(dbg_rect, &dbg_color);
+        use crate::piet::RenderContext;
+        let dbg_rect = Rect::from_origin_size(crate::kurbo::Point::ORIGIN, base_state.size());
+        let dbg_color = Color::rgba8(0x00, 0xff, 0xff, 0x33);
+        paint_ctx.fill(dbg_rect, &dbg_color);
         self.child.paint_with_offset(paint_ctx, data, env);
     }
 
@@ -70,6 +96,12 @@ impl<T: Data> Widget<T> for Align<T> {
         if bc.is_height_bounded() {
             my_size.height = bc.max().height;
         }
+        if let Some(axis) = &self.axis {
+            match axis {
+                Axis::Horizontal => my_size.height = size.height,
+                Axis::Vertical => my_size.width = size.width,
+            }
+        }
         my_size = bc.constrain(my_size);
         let extra_width = (my_size.width - size.width).max(0.);
         let extra_height = (my_size.height - size.height).max(0.);
@@ -78,6 +110,7 @@ impl<T: Data> Widget<T> for Align<T> {
             .resolve(Rect::new(0., 0., extra_width, extra_height));
         self.child
             .set_layout_rect(Rect::from_origin_size(origin, size));
+
         my_size
     }
 

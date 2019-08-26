@@ -43,3 +43,6 @@ pub use crate::widget::textbox::TextBox;
 
 mod checkbox;
 pub use crate::widget::checkbox::CheckBox;
+
+mod sizedbox;
+pub use crate::widget::sizedbox::SizedBox;

@@ -18,8 +18,8 @@ use druid::kurbo::Size;
 use druid::piet::UnitPoint;
 use druid::shell::{runloop, WindowBuilder};
 use druid::widget::{
-    ActionWrapper, Align, Button, CheckBox, Column, DynLabel, Padding, ProgressBar, Scroll, Slider,
-    TextBox,
+    ActionWrapper, Align, Button, CheckBox, Column, DynLabel, Padding, ProgressBar, Scroll,
+    SizedBox, Slider, TextBox,
 };
 use druid::{
     Action, BaseState, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, PaintCtx, UiMain,
@@ -103,28 +103,12 @@ fn main() {
     let bar = ProgressBar::new();
     let slider = Slider::new();
 
-    let button_1 = ActionWrapper::new(
-        Align::centered(Button::shrink_to_fit("Shrink to fit")),
-        move |data: &mut f64, _env| *data += 0.1,
-    );
-    let button_2 = ActionWrapper::new(
-        Button::sized("Sized", 200.0, 100.0),
-        move |data: &mut f64, _env| *data -= 0.1,
-    );
-
-    let button_3 = ActionWrapper::new(Button::new("Flex Basic"), move |data: &mut f64, _env| {
-        *data += 0.05
+    let button_1 = ActionWrapper::new(Button::new("Increment"), move |data: &mut f64, _env| {
+        *data += 0.1
     });
-
-    let button_4 = ActionWrapper::new(
-        Button::padded("Padded", 10., 5.),
-        move |data: &mut f64, _env| *data -= 0.05,
-    );
-
-    let button_5 = ActionWrapper::new(
-        Button::centered("Flex Centered"),
-        move |data: &mut f64, _env| *data += 0.05,
-    );
+    let button_2 = ActionWrapper::new(Button::new("Decrement"), move |data: &mut f64, _env| {
+        *data -= 0.1
+    });
 
     let textbox = DynWidget::new(
         TextBox::new(),
@@ -148,24 +132,22 @@ fn main() {
     col.add_child(Padding::uniform(5.0, slider), 1.0);
     col.add_child(Padding::uniform(5.0, label_1), 1.0);
     col.add_child(Padding::uniform(5.0, label_2), 1.0);
-    col.add_child(Padding::uniform(5.0, button_1), 1.0);
-    col.add_child(Padding::uniform(5.0, button_2), 0.0);
-    col.add_child(Padding::uniform(5.0, button_3), 1.0);
     col.add_child(
-        Align::centered(Align::new(
-            UnitPoint::new(0.9, 0.4),
-            Padding::uniform(5.0, button_4),
-        )),
+        Padding::uniform(5.0, SizedBox::new(Some(100.0), Some(100.0), button_1)),
         1.0,
     );
-    col.add_child(Padding::uniform(5.0, button_5), 1.0);
-    col.add_child(Padding::uniform(5.0, Align::centered(textbox)), 1.0);
-    col.add_child(Padding::uniform(5.0, Align::centered(checkbox)), 0.0);
+    col.add_child(Padding::uniform(5.0, Align::centered(button_2)), 1.0);
+    col.add_child(Padding::uniform(5.0, textbox), 1.0);
+    col.add_child(
+        Padding::uniform(5.0, Align::new(UnitPoint::new(1.0, 0.5), checkbox)),
+        1.0,
+    );
 
-    let root = Align::centered(col);
+    // let root = Scroll::new(SizedBox::new(Some(400.0), None, Align::centered(col)));
+    let root = col;
     // let root = Align::centered(root);
 
-    let state = UiState::new(Scroll::new(root), 0.7f64);
+    let state = UiState::new(root, 0.7f64);
     builder.set_title("Widget demo");
     builder.set_handler(Box::new(UiMain::new(state)));
     let window = builder.build().unwrap();

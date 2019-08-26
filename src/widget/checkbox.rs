@@ -17,7 +17,7 @@
 use crate::kurbo::{BezPath, Point, RoundedRect, Size};
 use crate::piet::{LineCap, LineJoin, LinearGradient, RenderContext, StrokeStyle, UnitPoint};
 use crate::theme;
-use crate::widget::Align;
+use crate::widget::{Align, SizedBox};
 use crate::{
     Action, BaseState, BoxConstraints, Env, Event, EventCtx, LayoutCtx, PaintCtx, UpdateCtx, Widget,
 };
@@ -27,7 +27,7 @@ pub struct CheckBox;
 
 impl CheckBox {
     pub fn new() -> impl Widget<bool> {
-        Align::new(UnitPoint::LEFT, CheckBoxRaw::default())
+        Align::vertical(UnitPoint::CENTER, CheckBoxRaw::default())
     }
 }
 
