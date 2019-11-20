@@ -14,6 +14,9 @@
 
 //! Common widgets.
 
+mod adapt;
+pub use crate::widget::adapt::{Adapt, Prism};
+
 mod align;
 pub use crate::widget::align::Align;
 
