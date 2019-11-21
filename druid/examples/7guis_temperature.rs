@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use druid::widget::{Adapt, Align, Label, Padding, Prism, Row, TextBox};
+use druid::widget::{Adapt, Align, Label, NumericTextBox, Padding, Prism, Row, TextBox};
 use druid::{AppLauncher, Widget, WindowDesc};
 
 struct CtoCString;
@@ -20,7 +20,7 @@ struct CtoFString;
 
 impl Prism<f64, String> for CtoCString {
     fn up<'a>(&self, data: &'a f64) -> String {
-        data.to_string().clone()
+        format!("{:.*}", 2, data)
     }
 
     fn down(&self, data: String) -> Option<f64> {
@@ -34,12 +34,13 @@ impl Prism<f64, String> for CtoCString {
 
 impl Prism<f64, String> for CtoFString {
     fn up<'a>(&self, data: &'a f64) -> String {
-        (data * 1.8 + 32.0).to_string().clone()
+        format!("{:.*}", 2, data * 1.8 + 32.0)
     }
 
     fn down(&self, data: String) -> Option<f64> {
         if let Ok(parsed) = data.parse::<f64>() {
-            Some(parsed)
+            let c = (parsed - 32.0) / 1.8;
+            Some(c)
         } else {
             None
         }
@@ -64,9 +65,11 @@ fn main() {
 }
 
 fn ui_builder() -> impl Widget<f64> {
-    let celsius_box = Adapt::new(TextBox::new(), CtoCString);
+    // let celsius_box = Adapt::new(TextBox::new(), CtoCString);
+    let celsius_box = NumericTextBox::new();
 
-    let fahrenheit_box = Adapt::new(TextBox::new(), CtoFString);
+    // let fahrenheit_box = Adapt::new(TextBox::new(), CtoFString);
+    let fahrenheit_box = NumericTextBox::new();
 
     let celsius_label = Label::new("Celsius = ");
     let fahrenheit_label = Label::new("Fahrenheit");

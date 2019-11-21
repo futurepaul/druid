@@ -17,6 +17,9 @@
 mod adapt;
 pub use crate::widget::adapt::{Adapt, Prism};
 
+mod numeric_textbox;
+pub use crate::widget::numeric_textbox::NumericTextBox;
+
 mod align;
 pub use crate::widget::align::Align;
 

@@ -78,11 +78,14 @@ where
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
         let mut adapted_data = self.prism.up(data).clone();
 
-        self.child.event(ctx, event, &mut adapted_data, env);
-
-        if let Some(down) = self.prism.down(adapted_data) {
-            *data = down;
-        };
+        if ctx.has_focus() {
+            if let Some(down) = self.prism.down(adapted_data) {
+                *data = down;
+            };
+        } else {
+            let mut adapted_data = self.prism.up(data).clone();
+            self.child.event(ctx, event, &mut adapted_data, env);
+        }
     }
 
     fn update(&mut self, ctx: &mut UpdateCtx, old_data: Option<&T>, data: &T, env: &Env) {
