@@ -20,6 +20,16 @@ struct AppState {
     temp_c: f64,
 }
 
+impl AppState {
+    pub fn get_fahrenheit(&self) -> f64 {
+        32.0 + (1.8 * self.temp_c)
+    }
+
+    pub fn set_celsius_from_fahrenheit(&mut self, new_value: f64) {
+        self.temp_c = (new_value - 32.0) / 1.8;
+    }
+}
+
 pub mod lenses {
     pub mod app_state {
         use super::super::AppState;
@@ -40,16 +50,15 @@ pub mod lenses {
 
         impl Lens2<AppState, f64> for TempF {
             fn get<V, F: FnOnce(&f64) -> V>(&self, data: &AppState, f: F) -> V {
-                let temp_f = 32.0 + (1.8 * data.temp_c);
-                f(&temp_f)
+                f(&data.get_fahrenheit())
             }
 
             fn with_mut<V, F: FnOnce(&mut f64) -> V>(&self, data: &mut AppState, f: F) -> V {
-                let mut temp_f = 32.0 + (1.8 * data.temp_c);
-                let save_temp_f = temp_f;
-                let val = f(&mut temp_f);
-                if !temp_f.same(&save_temp_f) {
-                    data.temp_c = (temp_f - 32.0) / 1.8;
+                let mut state = data.get_fahrenheit();
+                let save_state = state;
+                let val = f(&mut state);
+                if !state.same(&save_state) {
+                    data.set_celsius_from_fahrenheit(state);
                 };
                 val
             }
