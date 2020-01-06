@@ -28,9 +28,14 @@ use log::error;
 
 #[cfg(feature = "svg")]
 use druid::{
-    widget::{Flex, Label, Svg, SvgData, WidgetExt},
-    AppLauncher, Widget, WindowDesc,
+    theme,
+    widget::{Draw, Flex, Label, Svg, SvgData, WidgetExt},
+    AppLauncher, BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LinearGradient, PaintCtx,
+    RenderContext, UnitPoint, UpdateCtx, Widget, WidgetPod, WindowDesc,
 };
+
+#[cfg(feature = "svg")]
+use druid::kurbo::{Point, Rect, RoundedRect, Size};
 
 #[cfg(feature = "svg")]
 fn main() {
@@ -55,9 +60,36 @@ fn ui_builder() -> impl Widget<u32> {
 
     let mut col = Flex::column();
 
+    col.add_child(
+        Draw::new(|env, paint_ctx, data| {
+            let rounded_rect =
+                RoundedRect::from_origin_size(Point::ORIGIN, paint_ctx.size().to_vec2(), 4.);
+            let bg_gradient = LinearGradient::new(
+                UnitPoint::TOP,
+                UnitPoint::BOTTOM,
+                (env.get(theme::BUTTON_LIGHT), env.get(theme::BUTTON_DARK)),
+            );
+
+            paint_ctx.fill(rounded_rect, &bg_gradient);
+        }),
+        1.0,
+    );
     col.add_child(Svg::new(tiger_svg.clone()).fix_width(100.0).center(), 1.0);
     col.add_child(
-        Svg::new(tiger_svg).on_click(|_ctx, data, _env| *data += 1),
+        Draw::new_with_child(
+            Svg::new(tiger_svg).on_click(|_ctx, data, _env| *data += 1),
+            |env, paint_ctx, data| {
+                let rounded_rect =
+                    RoundedRect::from_origin_size(Point::ORIGIN, paint_ctx.size().to_vec2(), 4.);
+                let bg_gradient = LinearGradient::new(
+                    UnitPoint::TOP,
+                    UnitPoint::BOTTOM,
+                    (env.get(theme::BUTTON_LIGHT), env.get(theme::BUTTON_DARK)),
+                );
+
+                paint_ctx.fill(rounded_rect, &bg_gradient);
+            },
+        ),
         1.0,
     );
     col.add_child(
