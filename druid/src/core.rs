@@ -21,11 +21,11 @@ use std::time::Instant;
 use log;
 
 use crate::bloom::Bloom;
-use crate::kurbo::{Affine, Rect, Shape, Size};
+use crate::kurbo::{Affine, Point, Rect, Shape, Size};
 use crate::piet::{Piet, RenderContext};
 use crate::{
-    BoxConstraints, Command, Cursor, Data, Env, Event, LifeCycle, Target, Text, TimerToken, Widget,
-    WidgetId, WinCtx, WindowHandle, WindowId,
+    theme, BoxConstraints, Command, Cursor, Data, Env, Event, LifeCycle, Target, Text, TimerToken,
+    Widget, WidgetId, WinCtx, WindowHandle, WindowId,
 };
 
 /// Convenience type for dynamic boxed widget.
@@ -192,6 +192,13 @@ impl<T: Data, W: Widget<T>> WidgetPod<T, W> {
             focus_widget: paint_ctx.focus_widget,
         };
         self.inner.paint(&mut ctx, data, &env);
+
+        if env.get(theme::DEBUG_PAINT) {
+            let rect = Rect::from_origin_size(Point::ORIGIN, paint_ctx.size());
+            let id: u64 = u64::from(self.id);
+            let color = env.get_debug_color(id);
+            paint_ctx.stroke(rect, &color, 1.0);
+        }
     }
 
     /// Paint the widget, translating it by the origin of its layout rectangle.
