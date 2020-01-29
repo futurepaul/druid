@@ -195,7 +195,7 @@ impl<T: Data, W: Widget<T>> WidgetPod<T, W> {
 
         if env.get(theme::DEBUG_PAINT) {
             let rect = Rect::from_origin_size(Point::ORIGIN, paint_ctx.size());
-            let id: u64 = u64::from(self.id);
+            let id = u64::from(self.id());
             let color = env.get_debug_color(id);
             paint_ctx.stroke(rect, &color, 1.0);
         }
