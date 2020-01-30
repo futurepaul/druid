@@ -470,7 +470,11 @@ impl<T: Data, W: Widget<T>> WidgetPod<T, W> {
         match (self.old_data.as_ref(), self.env.as_ref()) {
             (Some(d), Some(e)) if d.same(data) && e.same(env) => return,
             (None, _) => {
-                log::warn!("old_data missing in {:?}, skipping update", self.id());
+                log::warn!(
+                    "old_data missing in {} {:?}, skipping update",
+                    self.widget().my_name(),
+                    self.id()
+                );
                 self.old_data = Some(data.clone());
                 self.env = Some(env.clone());
                 return;

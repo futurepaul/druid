@@ -200,6 +200,10 @@ pub trait Widget<T> {
     fn id(&self) -> Option<WidgetId> {
         None
     }
+
+    fn my_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
 }
 
 impl WidgetId {
@@ -240,5 +244,9 @@ impl<T> Widget<T> for Box<dyn Widget<T>> {
 
     fn id(&self) -> Option<WidgetId> {
         self.deref().id()
+    }
+
+    fn my_name(&self) -> &'static str {
+        self.deref().my_name()
     }
 }
