@@ -24,8 +24,8 @@ use crate::bloom::Bloom;
 use crate::kurbo::{Affine, Point, Rect, Shape, Size};
 use crate::piet::{Piet, RenderContext};
 use crate::{
-    theme, BoxConstraints, Command, Cursor, Data, Env, Event, LifeCycle, Target, Text, TimerToken,
-    Widget, WidgetId, WinCtx, WindowHandle, WindowId,
+    BoxConstraints, Command, Cursor, Data, Env, Event, LifeCycle, Target, Text, TimerToken, Widget,
+    WidgetId, WinCtx, WindowHandle, WindowId,
 };
 
 /// Convenience type for dynamic boxed widget.
@@ -193,9 +193,9 @@ impl<T: Data, W: Widget<T>> WidgetPod<T, W> {
         };
         self.inner.paint(&mut ctx, data, &env);
 
-        if env.get(theme::DEBUG_PAINT) {
+        if env.get(Env::DEBUG_PAINT) {
             let rect = Rect::from_origin_size(Point::ORIGIN, paint_ctx.size());
-            let id = u64::from(self.id());
+            let id = self.id().to_raw();
             let color = env.get_debug_color(id);
             paint_ctx.stroke(rect, &color, 1.0);
         }
