@@ -46,7 +46,7 @@ mod window;
 
 // Types from kurbo & piet that are required by public API.
 pub use kurbo::{Affine, Insets, Point, Rect, Size, Vec2};
-pub use piet::{Color, LinearGradient, PaintBrush, RadialGradient, RenderContext, UnitPoint};
+pub use piet::{Color, LinearGradient, RadialGradient, RenderContext, UnitPoint};
 // these are the types from shell that we expose; others we only use internally.
 pub use shell::{
     Application, Clipboard, ClipboardFormat, Cursor, Error as PlatformError, FileDialogOptions,
@@ -61,7 +61,7 @@ pub use box_constraints::BoxConstraints;
 pub use command::{sys as commands, Command, Selector, Target};
 pub use contexts::{EventCtx, LayoutCtx, LifeCycleCtx, PaintCtx, UpdateCtx};
 pub use data::Data;
-pub use env::{Env, Key, Value};
+pub use env::{Env, Key, PaintBrush, Value};
 pub use event::{Event, LifeCycle, WheelEvent};
 pub use ext_event::{ExtEventError, ExtEventSink};
 pub use lens::{Lens, LensExt, LensWrap};

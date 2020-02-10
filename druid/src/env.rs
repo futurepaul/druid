@@ -22,6 +22,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::kurbo::{Point, Rect, Size};
+use crate::piet;
 use crate::piet::{Color, LinearGradient};
 
 use crate::localization::L10nManager;
@@ -427,3 +428,22 @@ impl_value_type_owned!(Point, Point);
 impl_value_type_owned!(Size, Size);
 impl_value_type_borrowed!(str, String, String);
 impl_value_type_arc!(LinearGradient, LinearGradient);
+
+pub enum PaintBrush {
+    Concrete(piet::PaintBrush),
+    Key(Key<Color>),
+    // Key(Key<LinearGradient>)
+    // other variants possible
+}
+
+impl PaintBrush {
+    fn resolve(self, env: &Env) -> piet::PaintBrush {
+        match self {
+            PaintBrush::Concrete(brush) => brush,
+            PaintBrush::Key(key) => {
+                let color = env.get(key);
+                piet::PaintBrush::from(color)
+            }
+        }
+    }
+}
