@@ -433,16 +433,21 @@ impl_value_type_arc!(LinearGradient, LinearGradient);
 #[derive(Clone)]
 pub enum PaintBrush {
     Concrete(piet::PaintBrush),
-    Key(Key<Color>),
+    KeyColor(Key<Color>),
+    KeyGradient(Key<LinearGradient>),
 }
 
 impl PaintBrush {
     pub fn resolve(self, env: &Env) -> piet::PaintBrush {
         match self {
             PaintBrush::Concrete(brush) => brush,
-            PaintBrush::Key(key) => {
+            PaintBrush::KeyColor(key) => {
                 let color = env.get(key);
                 piet::PaintBrush::from(color)
+            }
+            PaintBrush::KeyGradient(key) => {
+                let gradient = env.get(key);
+                piet::PaintBrush::from(gradient)
             }
         }
     }
@@ -456,6 +461,12 @@ impl From<Color> for PaintBrush {
 
 impl From<Key<Color>> for PaintBrush {
     fn from(key: Key<Color>) -> PaintBrush {
-        PaintBrush::Key(key)
+        PaintBrush::KeyColor(key)
+    }
+}
+
+impl From<Key<LinearGradient>> for PaintBrush {
+    fn from(key: Key<LinearGradient>) -> PaintBrush {
+        PaintBrush::KeyGradient(key)
     }
 }
