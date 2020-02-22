@@ -15,10 +15,10 @@
 //! Convenience methods for widgets.
 
 use crate::kurbo::Insets;
-use crate::piet::{PaintBrush, UnitPoint};
+use crate::piet::UnitPoint;
 
 use super::{Align, Container, EnvScope, IdentityWrapper, Padding, Parse, SizedBox, WidgetId};
-use crate::{Data, Env, Lens, LensWrap, Widget};
+use crate::{Data, Env, Lens, LensWrap, PaintBrush, Widget};
 
 /// A trait that provides extra methods for combining `Widget`s.
 pub trait WidgetExt<T: Data>: Widget<T> + Sized + 'static {

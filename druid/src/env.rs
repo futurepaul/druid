@@ -55,6 +55,7 @@ struct EnvImpl {
 /// so the type for a string is `Key<&str>`.
 ///
 /// [`ValueType`]: trait.ValueType.html
+#[derive(Clone)]
 pub struct Key<T> {
     key: &'static str,
     value_type: PhantomData<T>,
@@ -429,15 +430,14 @@ impl_value_type_owned!(Size, Size);
 impl_value_type_borrowed!(str, String, String);
 impl_value_type_arc!(LinearGradient, LinearGradient);
 
+#[derive(Clone)]
 pub enum PaintBrush {
     Concrete(piet::PaintBrush),
     Key(Key<Color>),
-    // Key(Key<LinearGradient>)
-    // other variants possible
 }
 
 impl PaintBrush {
-    fn resolve(self, env: &Env) -> piet::PaintBrush {
+    pub fn resolve(self, env: &Env) -> piet::PaintBrush {
         match self {
             PaintBrush::Concrete(brush) => brush,
             PaintBrush::Key(key) => {
@@ -445,5 +445,17 @@ impl PaintBrush {
                 piet::PaintBrush::from(color)
             }
         }
+    }
+}
+
+impl From<Color> for PaintBrush {
+    fn from(color: Color) -> PaintBrush {
+        PaintBrush::Concrete(color.into())
+    }
+}
+
+impl From<Key<Color>> for PaintBrush {
+    fn from(key: Key<Color>) -> PaintBrush {
+        PaintBrush::Key(key)
     }
 }

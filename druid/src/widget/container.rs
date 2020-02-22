@@ -15,6 +15,7 @@
 //! A widget that provides simple visual styling options to a child.
 
 use crate::shell::kurbo::{Point, Rect, RoundedRect, Size};
+
 use crate::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintBrush,
     PaintCtx, RenderContext, UpdateCtx, Widget, WidgetPod,
@@ -122,11 +123,11 @@ impl<T: Data> Widget<T> for Container<T> {
         );
 
         if let Some(border) = &self.border {
-            paint_ctx.stroke(panel, &border.brush, border.width);
+            paint_ctx.stroke(panel, &border.brush.clone().resolve(env), border.width);
         };
 
         if let Some(background) = &self.background {
-            paint_ctx.fill(panel, background);
+            paint_ctx.fill(panel, &background.clone().resolve(env));
         };
 
         self.inner.paint(paint_ctx, data, env);
