@@ -430,43 +430,73 @@ impl_value_type_owned!(Size, Size);
 impl_value_type_borrowed!(str, String, String);
 impl_value_type_arc!(LinearGradient, LinearGradient);
 
+// #[derive(Clone)]
+// pub enum PaintBrush {
+//     Concrete(piet::PaintBrush),
+//     KeyColor(Key<Color>),
+//     // KeyGradient(Key<LinearGradient>),
+// }
+
 #[derive(Clone)]
-pub enum PaintBrush {
-    Concrete(piet::PaintBrush),
-    KeyColor(Key<Color>),
-    KeyGradient(Key<LinearGradient>),
+pub enum KeyOrValue<T> {
+    Concrete(T),
+    Key(Key<T>),
 }
 
-impl PaintBrush {
-    pub fn resolve(self, env: &Env) -> piet::PaintBrush {
+impl<'a, T: ValueType<'a>> KeyOrValue<T> {
+    pub fn resolve(self, env: &'a Env) -> T {
         match self {
-            PaintBrush::Concrete(brush) => brush,
-            PaintBrush::KeyColor(key) => {
-                let color = env.get(key);
-                piet::PaintBrush::from(color)
-            }
-            PaintBrush::KeyGradient(key) => {
-                let gradient = env.get(key);
-                piet::PaintBrush::from(gradient)
+            KeyOrValue::Concrete(value) => value,
+            KeyOrValue::Key(key) => {
+                let value: T = env.get(key);
+                T::from(value)
             }
         }
     }
 }
 
-impl From<Color> for PaintBrush {
-    fn from(color: Color) -> PaintBrush {
-        PaintBrush::Concrete(color.into())
+impl<'a, T: ValueType<'a>> From<T> for KeyOrValue<T> {
+    fn from(value: T) -> KeyOrValue<T> {
+        KeyOrValue::Concrete(value.into())
     }
 }
 
-impl From<Key<Color>> for PaintBrush {
-    fn from(key: Key<Color>) -> PaintBrush {
-        PaintBrush::KeyColor(key)
+impl<'a, T: ValueType<'a>> From<Key<T>> for KeyOrValue<T> {
+    fn from(key: Key<T>) -> KeyOrValue<T> {
+        KeyOrValue::Key(key)
     }
 }
 
-impl From<Key<LinearGradient>> for PaintBrush {
-    fn from(key: Key<LinearGradient>) -> PaintBrush {
-        PaintBrush::KeyGradient(key)
-    }
-}
+// impl From<KeyOrValue<Color>> for piet::PaintBrush {
+//   fn from(key: KeyOrValue<Color>) -> piet::PaintBrush {
+//     match key {
+//       KeyOrValue::Concrete(color) => color,
+//       KeyOrValue
+//     }
+
+// }
+// }
+
+// impl From<Color> for KeyOrValue<Color> {
+//     fn from(color: Color) -> KeyOrValue<Color> {
+//        KeyOrValue::Concrete(color.into())
+//     }
+// }
+
+// impl From<Key<Color>> for KeyOrValue<Color> {
+//   fn from(key: Key<Color>) -> KeyOrValue<Color> {
+//      KeyOrValue::Key(key)
+//   }
+// }
+
+// impl From<Key<Color>> for PaintBrush {
+//     fn from(key: Key<Color>) -> PaintBrush {
+//         PaintBrush::KeyColor(key)
+//     }
+// }
+
+// impl From<Key<LinearGradient>> for PaintBrush {
+//     fn from(key: Key<LinearGradient>) -> PaintBrush {
+//         PaintBrush::KeyGradient(key)
+//     }
+// }

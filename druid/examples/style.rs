@@ -33,7 +33,7 @@ fn ui_builder() -> impl Widget<u32> {
 
     let label = Label::new(text.clone())
         .padding(5.0)
-        .border(theme::LABEL_COLOR, 1.0);
+        .border(theme::LABEL_COLOR, theme::SCROLL_BAR_WIDTH);
 
     let black_label = Label::new(text)
         .padding(5.0)
