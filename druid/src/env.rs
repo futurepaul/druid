@@ -22,7 +22,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::kurbo::{Point, Rect, Size};
-use crate::piet;
 use crate::piet::{Color, LinearGradient};
 
 use crate::localization::L10nManager;
@@ -55,9 +54,8 @@ struct EnvImpl {
 /// so the type for a string is `Key<&str>`.
 ///
 /// [`ValueType`]: trait.ValueType.html
-#[derive(Clone)]
-pub struct Key<T> {
-    key: &'static str,
+pub struct Key<'a, T: 'a> {
+    key: &'a str,
     value_type: PhantomData<T>,
 }
 
@@ -183,10 +181,10 @@ impl Env {
     /// Set by the `debug_paint_layout()` method on [`AppLauncher`]'.
     ///
     /// [`AppLauncher`]: struct.AppLauncher.html
-    pub(crate) const DEBUG_PAINT: Key<bool> = Key::new("debug_paint");
+    pub(crate) const DEBUG_PAINT: Key<'static, bool> = Key::new("debug_paint");
 }
 
-impl<T> Key<T> {
+impl<'a, T> Key<'a, T> {
     /// Create a new strongly typed `Key` with the given string value.
     /// The type of the key will be inferred.
     ///
@@ -199,7 +197,7 @@ impl<T> Key<T> {
     /// let float_key: Key<f64> = Key::new("a.very.good.float");
     /// let color_key: Key<Color> = Key::new("a.very.nice.color");
     /// ```
-    pub const fn new(key: &'static str) -> Self {
+    pub const fn new(key: &'a str) -> Self {
         Key {
             key,
             value_type: PhantomData,
@@ -326,7 +324,7 @@ impl Default for Env {
     }
 }
 
-impl<T> From<Key<T>> for String {
+impl<'a, T> From<Key<'a, T>> for String {
     fn from(src: Key<T>) -> String {
         String::from(src.key)
     }
@@ -461,7 +459,7 @@ impl<'a, T: ValueType<'a>> From<T> for KeyOrValue<T> {
     }
 }
 
-impl<'a, T: ValueType<'a>> From<Key<T>> for KeyOrValue<T> {
+impl<'a, T: ValueType<'a>> From<Key<'a, T>> for KeyOrValue<T> {
     fn from(key: Key<T>) -> KeyOrValue<T> {
         KeyOrValue::Key(key)
     }
