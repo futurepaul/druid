@@ -428,13 +428,6 @@ impl_value_type_owned!(Size, Size);
 impl_value_type_borrowed!(str, String, String);
 impl_value_type_arc!(LinearGradient, LinearGradient);
 
-// #[derive(Clone)]
-// pub enum PaintBrush {
-//     Concrete(piet::PaintBrush),
-//     KeyColor(Key<Color>),
-//     // KeyGradient(Key<LinearGradient>),
-// }
-
 #[derive(Clone)]
 pub enum KeyOrValue<T> {
     Concrete(T),
@@ -464,37 +457,3 @@ impl<'a, T: ValueType<'a>> From<Key<'a, T>> for KeyOrValue<T> {
         KeyOrValue::Key(key)
     }
 }
-
-// impl From<KeyOrValue<Color>> for piet::PaintBrush {
-//   fn from(key: KeyOrValue<Color>) -> piet::PaintBrush {
-//     match key {
-//       KeyOrValue::Concrete(color) => color,
-//       KeyOrValue
-//     }
-
-// }
-// }
-
-// impl From<Color> for KeyOrValue<Color> {
-//     fn from(color: Color) -> KeyOrValue<Color> {
-//        KeyOrValue::Concrete(color.into())
-//     }
-// }
-
-// impl From<Key<Color>> for KeyOrValue<Color> {
-//   fn from(key: Key<Color>) -> KeyOrValue<Color> {
-//      KeyOrValue::Key(key)
-//   }
-// }
-
-// impl From<Key<Color>> for PaintBrush {
-//     fn from(key: Key<Color>) -> PaintBrush {
-//         PaintBrush::KeyColor(key)
-//     }
-// }
-
-// impl From<Key<LinearGradient>> for PaintBrush {
-//     fn from(key: Key<LinearGradient>) -> PaintBrush {
-//         PaintBrush::KeyGradient(key)
-//     }
-// }
