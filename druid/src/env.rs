@@ -428,14 +428,13 @@ impl_value_type_owned!(Size, Size);
 impl_value_type_borrowed!(str, String, String);
 impl_value_type_arc!(LinearGradient, LinearGradient);
 
-#[derive(Clone)]
 pub enum KeyOrValue<T> {
     Concrete(T),
     Key(Key<T>),
 }
 
-impl<'a, T: ValueType<'a>> KeyOrValue<T> {
-    pub fn resolve(self, env: &'a Env) -> T {
+impl<T: ValueType> KeyOrValue<T> {
+    pub fn resolve(self, env: &Env) -> T {
         match self {
             KeyOrValue::Concrete(value) => value,
             KeyOrValue::Key(key) => {
@@ -446,13 +445,13 @@ impl<'a, T: ValueType<'a>> KeyOrValue<T> {
     }
 }
 
-impl<'a, T: ValueType<'a>> From<T> for KeyOrValue<T> {
+impl<T: ValueType> From<T> for KeyOrValue<T> {
     fn from(value: T) -> KeyOrValue<T> {
         KeyOrValue::Concrete(value.into())
     }
 }
 
-impl<'a, T: ValueType<'a>> From<Key<'a, T>> for KeyOrValue<T> {
+impl<T: ValueType> From<Key<T>> for KeyOrValue<T> {
     fn from(key: Key<T>) -> KeyOrValue<T> {
         KeyOrValue::Key(key)
     }
