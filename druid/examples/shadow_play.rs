@@ -23,13 +23,10 @@ struct CustomWidget;
 impl Widget<String> for CustomWidget {
     fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, _data: &mut String, _env: &Env) {}
 
-    fn lifecycle(
-        &mut self,
-        _ctx: &mut LifeCycleCtx,
-        _event: &LifeCycle,
-        _data: &String,
-        _env: &Env,
-    ) {
+    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, _data: &String, _env: &Env) {
+        if let LifeCycle::HotChanged(_) = event {
+            ctx.request_paint();
+        }
     }
 
     fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &String, _data: &String, _env: &Env) {}
@@ -49,7 +46,7 @@ impl Widget<String> for CustomWidget {
         let rect = Rect::from_origin_size(Point::ORIGIN, size);
 
         let grey = &Color::rgb8(0xE0, 0xE5, 0xEC);
-        let lighter_grey = &Color::rgba8(255, 255, 255, 127);
+        let lighter_grey = &Color::rgba8(255, 255, 255, 200);
         let darker_grey = &Color::rgba8(0xA3, 0xB1, 0xC6, 127);
         ctx.fill(rect, grey);
 
@@ -60,17 +57,48 @@ impl Widget<String> for CustomWidget {
 
         let rounded = RoundedRect::from_rect(rect, 10.0);
 
-        ctx.with_save(move |ctx| {
-            ctx.transform(Affine::translate((5.0, 5.0)));
-            ctx.blurred_rect(rect, 10.0, darker_grey);
-        });
+        if ctx.is_hot() {
+            ctx.with_save(move |ctx| {
+                ctx.transform(Affine::translate((3.0, 3.0)));
+                ctx.blurred_rect(rect, 10.0, darker_grey);
+            });
 
-        ctx.with_save(move |ctx| {
-            ctx.transform(Affine::translate((-5.0, -5.0)));
-            ctx.blurred_rect(rect, 10.0, lighter_grey);
-        });
+            ctx.with_save(move |ctx| {
+                ctx.transform(Affine::translate((-3.0, -3.0)));
+                ctx.blurred_rect(rect, 10.0, lighter_grey);
+            });
+        } else {
+            ctx.with_save(move |ctx| {
+                ctx.transform(Affine::translate((5.0, 5.0)));
+                ctx.blurred_rect(rect, 10.0, darker_grey);
+            });
+
+            ctx.with_save(move |ctx| {
+                ctx.transform(Affine::translate((-5.0, -5.0)));
+                ctx.blurred_rect(rect, 10.0, lighter_grey);
+            });
+        }
 
         ctx.fill(rounded, grey);
+
+        if ctx.is_hot() {
+            ctx.with_save(move |ctx| {
+                ctx.clip(rounded);
+                ctx.transform(Affine::translate((-10.0, -10.0)));
+                ctx.blurred_rect(rect, 10.0, darker_grey);
+            });
+
+            ctx.with_save(move |ctx| {
+                ctx.clip(rounded);
+                ctx.transform(Affine::translate((10.0, 10.0)));
+                ctx.blurred_rect(rect, 10.0, lighter_grey);
+            });
+
+            ctx.with_save(move |ctx| {
+                ctx.clip(rounded);
+                ctx.blurred_rect(rect, 10.0, grey);
+            });
+        }
     }
 }
 
