@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! An example of an animating widget.
+//! An animated spinner widget.
 
 use std::f64::consts::PI;
 
@@ -20,12 +20,19 @@ use druid::kurbo::Line;
 use druid::widget::prelude::*;
 use druid::{theme, Color, Data, KeyOrValue, Point, Vec2};
 
+/// An animated spinner widget for showing a loading state.
+///
+/// To customize the spinner's size, you can place it inside a [`SizedBox`]
+/// that has a fixed width and height.
+///
+/// [`SizedBox`]: struct.SizedBox.html
 pub struct Spinner {
     t: f64,
     color: KeyOrValue<Color>,
 }
 
 impl Spinner {
+    /// Create a spinner widget
     pub fn new() -> Spinner {
         Spinner {
             t: 0.0,
@@ -33,11 +40,21 @@ impl Spinner {
         }
     }
 
+    /// Builder-style method for setting the spinner's color.
+    ///
+    /// The argument can be either a `Color` or a [`Key<Color>`].
+    ///
+    /// [`Key<Color>`]: ../struct.Key.html
     pub fn with_color(mut self, color: impl Into<KeyOrValue<Color>>) -> Self {
         self.color = color.into();
         self
     }
 
+    /// Set the spinner's color.
+    ///
+    /// The argument can be either a `Color` or a [`Key<Color>`].
+    ///
+    /// [`Key<Color>`]: ../struct.Key.html
     pub fn set_color(&mut self, color: impl Into<KeyOrValue<Color>>) {
         self.color = color.into();
     }
@@ -67,9 +84,18 @@ impl<T: Data> Widget<T> for Spinner {
         _layout_ctx: &mut LayoutCtx,
         bc: &BoxConstraints,
         _data: &T,
-        _env: &Env,
+        env: &Env,
     ) -> Size {
-        bc.max()
+        bc.debug_check("Spinner");
+
+        if bc.is_width_bounded() && bc.is_height_bounded() {
+            bc.max()
+        } else {
+            bc.constrain(Size::new(
+                env.get(theme::BASIC_WIDGET_HEIGHT),
+                env.get(theme::BASIC_WIDGET_HEIGHT),
+            ))
+        }
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, _data: &T, env: &Env) {
@@ -84,7 +110,7 @@ impl<T: Data> Widget<T> for Spinner {
                 let step = f64::from(step);
                 let fade_t = (t * 12.0 + 1.0).trunc();
                 let fade = ((fade_t + step).rem_euclid(12.0) / 12.0) + 1.0 / 12.0;
-                let angle = Vec2::from_angle(-(step / 12.0) * 2.0 * PI);
+                let angle = Vec2::from_angle((step / 12.0) * -2.0 * PI);
                 let ambit_start = center + (10.0 * scale_factor * angle);
                 let ambit_end = center + (20.0 * scale_factor * angle);
                 let color = Color::rgba(r, g, b, fade);
