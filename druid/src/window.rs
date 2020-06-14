@@ -24,8 +24,9 @@ use crate::kurbo::{Point, Rect, Size};
 use crate::piet::{Piet, RenderContext};
 use crate::shell::{Counter, Cursor, WindowHandle};
 
-use crate::contexts::ContextState;
+use crate::contexts::{ContextState, Region};
 use crate::core::{CommandQueue, FocusChange, WidgetState};
+use crate::modal::{Modal, ModalDesc};
 use crate::util::ExtendDrain;
 use crate::widget::LabelText;
 use crate::win_handler::RUN_COMMANDS_TOKEN;
@@ -53,6 +54,10 @@ pub struct Window<T> {
     pub(crate) handle: WindowHandle,
     pub(crate) timers: HashMap<TimerToken, WidgetId>,
     // delegate?
+    /// A stack of modal widgets. The last widget gets user interaction events, and can choose
+    /// whether to propagate them.
+    modals: Vec<Modal<T>>,
+    invalid: Region,
 }
 
 impl<T> Window<T> {
@@ -69,6 +74,8 @@ impl<T> Window<T> {
             focus: None,
             handle,
             timers: HashMap::new(),
+            modals: Vec::new(),
+            invalid: Region::EMPTY,
         }
     }
 }
@@ -151,6 +158,41 @@ impl<T: Data> Window<T> {
         }
     }
 
+    /// Returns true if the command was a modal command.
+    fn handle_modal_command(&mut self, state: &mut WidgetState, cmd: &Command) -> bool {
+        if cmd.is(ModalDesc::<T>::SHOW_MODAL) {
+            let modal = cmd.get_unchecked(ModalDesc::<T>::SHOW_MODAL);
+            // SHOW_MODAL is private to druid, and we already checked at command submission
+            // that the type parameter is correct.
+            let modal = modal.take().unwrap().downcast::<ModalDesc<T>>().unwrap();
+            self.modals.push((*modal).into());
+            state.children_changed = true;
+            // TODO: We could be more conservative about invalidation. The problem is that we
+            // haven't laid out the modal yet, so we don't know how big it is. (also below)
+            self.invalid.add_rect(self.size.to_rect());
+            true
+        } else if cmd.is(ModalDesc::DISMISS_MODAL) {
+            if self.modals.pop().is_some() {
+                state.children_changed = true;
+            } else {
+                log::warn!("cannot dismiss modal; no modal shown");
+            }
+            self.invalid.add_rect(self.size.to_rect());
+            true
+        } else if cmd.is(ModalDesc::SHOW_MODAL_NO_DATA) {
+            if let Some(modal) = cmd.get_unchecked(ModalDesc::SHOW_MODAL_NO_DATA).take() {
+                self.modals.push(modal.lensed().into());
+                state.children_changed = true;
+            } else {
+                log::error!("couldn't get modal payload");
+            }
+            self.invalid.add_rect(self.size.to_rect());
+            true
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn event(
         &mut self,
         queue: &mut CommandQueue,
@@ -195,7 +237,12 @@ impl<T: Data> Window<T> {
         }
 
         let mut widget_state = WidgetState::new(self.root.id());
-        let is_handled = {
+        let modal_cmd = if let Event::Command(c) = &event {
+            self.handle_modal_command(&mut widget_state, c)
+        } else {
+            false
+        };
+        let is_handled = modal_cmd || {
             let mut state = ContextState::new::<T>(queue, &self.handle, self.id, self.focus);
             let mut ctx = EventCtx {
                 cursor: &mut cursor,
@@ -205,6 +252,12 @@ impl<T: Data> Window<T> {
                 is_root: true,
             };
 
+            for modal in self.modals.iter_mut().rev() {
+                modal.widget.event(&mut ctx, &event, data, env);
+                if is_user_input(&event) && !modal.pass_through_events {
+                    ctx.set_handled();
+                }
+            }
             self.root.event(&mut ctx, &event, data, env);
             ctx.is_handled
         };
@@ -265,6 +318,9 @@ impl<T: Data> Window<T> {
             widget_state: &mut widget_state,
         };
         let event = substitute_event.as_ref().unwrap_or(event);
+        for modal in self.modals.iter_mut().rev() {
+            modal.widget.lifecycle(&mut ctx, event, data, env);
+        }
         self.root.lifecycle(&mut ctx, event, data, env);
 
         if substitute_event.is_some() && ctx.widget_state.request_anim {
@@ -284,19 +340,40 @@ impl<T: Data> Window<T> {
             state: &mut state,
         };
 
+        for modal in self.modals.iter_mut().rev() {
+            modal.widget.update(&mut update_ctx, data, env);
+        }
         self.root.update(&mut update_ctx, data, env);
         self.post_event_processing(&mut widget_state, queue, data, env, false);
     }
 
     pub(crate) fn invalidate_and_finalize(&mut self) {
-        if self.root.state().needs_layout {
+        if self.needs_layout() {
             self.handle.invalidate();
         } else {
             let invalid = &self.root.state().invalid;
             if !invalid.is_empty() {
                 self.handle.invalidate_rect(invalid.to_rect());
             }
+            for modal in &self.modals {
+                let invalid = &modal.widget.state().invalid;
+                if !invalid.is_empty() {
+                    let origin = modal.widget.state().paint_rect().origin().to_vec2();
+                    self.handle.invalidate_rect(invalid.to_rect() + origin);
+                }
+            }
+
+            // FIXME: We should unify the handling of invalid rects somehow. This exists because we
+            // need to mark an invalid region when a modal *disappears*
+            if !self.invalid.is_empty() {
+                self.handle.invalidate_rect(self.invalid.to_rect());
+                self.invalid = Region::EMPTY;
+            }
         }
+    }
+
+    fn needs_layout(&self) -> bool {
+        self.root.state().needs_layout || self.modals.iter().any(|m| m.widget.state().needs_layout)
     }
 
     /// Do all the stuff we do in response to a paint call from the system:
@@ -312,7 +389,7 @@ impl<T: Data> Window<T> {
         // FIXME: only do AnimFrame if root has requested_anim?
         self.lifecycle(queue, &LifeCycle::AnimFrame(0), data, env, true);
 
-        if self.root.state().needs_layout {
+        if self.needs_layout() {
             self.layout(queue, data, env);
         }
 
@@ -339,6 +416,21 @@ impl<T: Data> Window<T> {
             env,
             Rect::from_origin_size(Point::ORIGIN, size),
         );
+
+        for modal in &mut self.modals {
+            let bc = BoxConstraints::new(Size::ZERO, size);
+            let modal_size = modal.widget.layout(&mut layout_ctx, &bc, data, env);
+            let modal_origin = if let Some(pos) = modal.position {
+                // TODO: translate the position to ensure that the modal fits in our bounds.
+                pos
+            } else {
+                ((size.to_vec2() - modal_size.to_vec2()) / 2.0).to_point()
+            };
+            let modal_frame = Rect::from_origin_size(modal_origin, modal_size);
+            modal
+                .widget
+                .set_layout_rect(&mut layout_ctx, data, env, modal_frame);
+        }
         self.post_event_processing(&mut widget_state, queue, data, env, true);
     }
 
@@ -374,7 +466,15 @@ impl<T: Data> Window<T> {
             depth: 0,
         };
 
-        ctx.with_child_ctx(invalid_rect, |ctx| root.paint_raw(ctx, data, env));
+        let modals = &mut self.modals;
+        ctx.with_child_ctx(invalid_rect, |ctx| {
+            root.paint_raw(ctx, data, env);
+
+            for modal in modals {
+                modal.widget.paint(ctx, data, env);
+            }
+        });
+
         let mut z_ops = mem::take(&mut ctx.z_ops);
         z_ops.sort_by_key(|k| k.z_index);
 
@@ -436,6 +536,20 @@ impl<T: Data> Window<T> {
                     }
                 })
         })
+    }
+}
+
+fn is_user_input(event: &Event) -> bool {
+    match event {
+        Event::MouseUp(_)
+        | Event::MouseDown(_)
+        | Event::MouseMove(_)
+        | Event::KeyUp(_)
+        | Event::KeyDown(_)
+        | Event::Paste(_)
+        | Event::Wheel(_)
+        | Event::Zoom(_) => true,
+        _ => false,
     }
 }
 

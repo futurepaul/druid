@@ -21,11 +21,13 @@ use std::{
 };
 
 use crate::core::{CommandQueue, FocusChange, WidgetState};
+use crate::modal::ModalDesc;
 use crate::piet::Piet;
 use crate::piet::RenderContext;
 use crate::{
-    commands, Affine, Command, ContextMenu, Cursor, Insets, MenuDesc, Point, Rect, SingleUse, Size,
-    Target, Text, TimerToken, Vec2, WidgetId, WindowDesc, WindowHandle, WindowId,
+    commands, Affine, Command, ContextMenu, Cursor, Data, DialogDesc, Insets, MenuDesc, Point,
+    Rect, SingleUse, Size, Target, Text, TimerToken, Vec2, WidgetId, WindowDesc, WindowHandle,
+    WindowId,
 };
 
 /// A macro for implementing methods on multiple contexts.
@@ -404,6 +406,44 @@ impl EventCtx<'_, '_> {
                 log::error!("EventCtx::show_context_menu: {}", MSG)
             }
         }
+    }
+
+    pub fn show_modal<T: Any>(&mut self, modal: ModalDesc<T>) {
+        if self.state.root_app_data_type == TypeId::of::<T>() {
+            self.submit_command(
+                ModalDesc::<T>::SHOW_MODAL.with(SingleUse::new(Box::new(modal))),
+                Target::Window(self.state.window_id),
+            );
+        } else {
+            const MSG: &str = "ModalDesc<T> - T must match the application data type.";
+            if cfg!(debug_assertions) {
+                panic!(MSG);
+            } else {
+                log::error!("EventCtx::show_modal: {}", MSG);
+            }
+        }
+    }
+
+    pub fn show_static_modal(&mut self, modal: ModalDesc<()>) {
+        self.submit_command(
+            ModalDesc::SHOW_MODAL_NO_DATA.with(SingleUse::new(modal)),
+            Target::Window(self.state.window_id),
+        );
+    }
+
+    pub fn dismiss_modal(&mut self) {
+        self.submit_command(
+            ModalDesc::DISMISS_MODAL,
+            Target::Window(self.state.window_id),
+        );
+    }
+
+    pub fn show_dialog<T: Any + Data>(&mut self, dialog: DialogDesc<T>) {
+        self.show_modal(dialog.into_modal_desc());
+    }
+
+    pub fn show_static_dialog(&mut self, dialog: DialogDesc<()>) {
+        self.show_static_modal(dialog.into_modal_desc());
     }
 
     /// Set the event as "handled", which stops its propagation to other

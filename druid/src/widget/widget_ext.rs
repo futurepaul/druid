@@ -17,7 +17,7 @@
 use super::invalidation::DebugInvalidation;
 use super::{
     Align, BackgroundBrush, Click, Container, Controller, ControllerHost, EnvScope,
-    IdentityWrapper, Padding, Parse, SizedBox, WidgetId,
+    IdentityWrapper, LabelText, Padding, Parse, SizedBox, TooltipController, WidgetId,
 };
 use crate::{Color, Data, Env, EventCtx, Insets, KeyOrValue, Lens, LensWrap, UnitPoint, Widget};
 
@@ -242,6 +242,25 @@ pub trait WidgetExt<T: Data>: Widget<T> + Sized + 'static {
     /// Wrap this widget in a `Box`.
     fn boxed(self) -> Box<dyn Widget<T>> {
         Box::new(self)
+    }
+
+    /// Displays a tooltip when the mouse hovers over this widget.
+    fn tooltip(self, text: impl Into<LabelText<T>>) -> ControllerHost<Self, TooltipController<T>> {
+        self.controller(TooltipController::new(text.into()))
+    }
+
+    /// Displays a tooltip when the mouse hovers over this widget.
+    ///
+    /// This is provided as a convenience; a closure can also be passed to [`WidgetExt::tooltip`],
+    /// but due to limitations of the implementation of that method, the types in the closure need
+    /// to be annotated, which is not true for this method.
+    ///
+    /// [`WidgetExt::tooltip`]: ../trait.WidgetExt.html#tymethod.tooltip
+    fn tooltip_dynamic(
+        self,
+        text: impl Fn(&T, &Env) -> String + 'static,
+    ) -> ControllerHost<Self, TooltipController<T>> {
+        self.tooltip(text)
     }
 }
 

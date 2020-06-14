@@ -68,6 +68,7 @@ impl_example!(layout);
 impl_example!(lens);
 impl_example!(list);
 impl_example!(list_hashmap);
+impl_example!(modal);
 impl_example!(multiwin);
 impl_example!(open_save);
 impl_example!(panels.unwrap());

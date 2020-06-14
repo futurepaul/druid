@@ -45,6 +45,7 @@ mod stepper;
 mod svg;
 mod switch;
 mod textbox;
+mod tooltip;
 mod view_switcher;
 #[allow(clippy::module_inception)]
 mod widget;
@@ -79,6 +80,7 @@ pub use stepper::Stepper;
 pub use svg::{Svg, SvgData};
 pub use switch::Switch;
 pub use textbox::TextBox;
+pub use tooltip::TooltipController;
 pub use view_switcher::ViewSwitcher;
 #[doc(hidden)]
 pub use widget::{Widget, WidgetId};
