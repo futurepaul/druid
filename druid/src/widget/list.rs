@@ -21,6 +21,7 @@ use std::sync::Arc;
 use crate::im::Vector;
 
 use crate::kurbo::{Point, Rect, Size};
+use crate::widget::flex::Axis;
 
 use crate::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
@@ -31,6 +32,7 @@ use crate::{
 pub struct List<T> {
     closure: Box<dyn Fn() -> Box<dyn Widget<T>>>,
     children: Vec<WidgetPod<T, Box<dyn Widget<T>>>>,
+    axis: Axis,
 }
 
 impl<T: Data> List<T> {
@@ -40,6 +42,15 @@ impl<T: Data> List<T> {
         List {
             closure: Box::new(move || Box::new(closure())),
             children: Vec::new(),
+            axis: Axis::Vertical,
+        }
+    }
+
+    pub fn horizontal<W: Widget<T> + 'static>(closure: impl Fn() -> W + 'static) -> Self {
+        List {
+            closure: Box::new(move || Box::new(closure())),
+            children: Vec::new(),
+            axis: Axis::Horizontal,
         }
     }
 
@@ -235,8 +246,12 @@ impl<C: Data, T: ListIter<C>> Widget<T> for List<C> {
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
-        let mut width = bc.min().width;
-        let mut y = 0.0;
+        let axis = self.axis;
+        let mut cross_length = match axis {
+            Axis::Vertical => bc.max().width,
+            Axis::Horizontal => bc.max().height,
+        };
+        let mut main_offset = 0.0;
 
         let mut paint_rect = Rect::ZERO;
         let mut children = self.children.iter_mut();
@@ -247,19 +262,41 @@ impl<C: Data, T: ListIter<C>> Widget<T> for List<C> {
                     return;
                 }
             };
-            let child_bc = BoxConstraints::new(
-                Size::new(bc.min().width, 0.0),
-                Size::new(bc.max().width, std::f64::INFINITY),
-            );
+            let child_bc = match axis {
+                Axis::Vertical => BoxConstraints::new(
+                    Size::new(bc.min().width, 0.0),
+                    Size::new(bc.max().width, std::f64::INFINITY),
+                ),
+                Axis::Horizontal => BoxConstraints::new(
+                    Size::new(0.0, bc.min().height),
+                    Size::new(std::f64::INFINITY, bc.max().height),
+                ),
+            };
             let child_size = child.layout(ctx, &child_bc, child_data, env);
-            let rect = Rect::from_origin_size(Point::new(0.0, y), child_size);
+            let origin = match axis {
+                Axis::Vertical => Point::new(0.0, main_offset),
+                Axis::Horizontal => Point::new(main_offset, 0.0),
+            };
+            let rect = Rect::from_origin_size(origin, child_size);
             child.set_layout_rect(ctx, child_data, env, rect);
             paint_rect = paint_rect.union(child.paint_rect());
-            width = width.max(child_size.width);
-            y += child_size.height;
+            match axis {
+                Axis::Vertical => {
+                    cross_length = cross_length.max(child_size.width);
+                    main_offset += child_size.height;
+                }
+                Axis::Horizontal => {
+                    cross_length = cross_length.max(child_size.height);
+                    main_offset += child_size.width;
+                }
+            }
         });
 
-        let my_size = bc.constrain(Size::new(width, y));
+        let size = match axis {
+            Axis::Vertical => Size::new(cross_length, main_offset),
+            Axis::Horizontal => Size::new(main_offset, cross_length),
+        };
+        let my_size = bc.constrain(size);
         let insets = paint_rect - Rect::ZERO.with_size(my_size);
         ctx.set_paint_insets(insets);
         my_size
