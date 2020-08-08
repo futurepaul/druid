@@ -15,20 +15,13 @@
 //! A label widget.
 
 use crate::piet::{
-    Color, FontBuilder, PietText, PietTextLayout, RenderContext, Text, TextLayout,
+    Color, PietText, PietTextLayout, RenderContext, Text, TextAttribute, TextLayout,
     TextLayoutBuilder, UnitPoint,
 };
 use crate::{
     theme, BoxConstraints, Data, Env, Event, EventCtx, KeyOrValue, LayoutCtx, LifeCycle,
     LifeCycleCtx, LocalizedString, PaintCtx, Point, Size, UpdateCtx, Widget,
 };
-
-// a fudgey way to get an approximate line height from a font size
-const LINE_HEIGHT_FACTOR: f64 = 1.2;
-// a fudgey way of figuring out where to put the baseline, relative to line height
-const BASELINE_GUESS_FACTOR: f64 = 0.8;
-// added padding between the edges of the widget and the text.
-const LABEL_X_PADDING: f64 = 2.0;
 
 /// The text for the label.
 ///
@@ -195,14 +188,17 @@ impl<T: Data> Label<T> {
         self.font = font.into();
     }
 
-    fn get_layout(&mut self, t: &mut PietText, env: &Env) -> PietTextLayout {
+    fn get_layout(&mut self, t: &mut PietText, max_width: f64, env: &Env) -> PietTextLayout {
         let font_name = self.font.resolve(env);
         let font_size = self.size.resolve(env);
+        let color = self.color.resolve(env);
 
-        // TODO: caching of both the format and the layout
-        let font = t.new_font_by_name(font_name, font_size).build().unwrap();
+        let font = t.font_family(font_name).unwrap_or_default();
         self.text.with_display_text(|text| {
-            t.new_text_layout(&font, &text, std::f64::INFINITY)
+            t.new_text_layout(&text)
+                .font(font.clone(), font_size)
+                .max_width(max_width)
+                .default_attribute(TextAttribute::ForegroundColor(color.clone()))
                 .build()
                 .unwrap()
         })
@@ -268,24 +264,17 @@ impl<T: Data> Widget<T> for Label<T> {
     fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, _data: &T, env: &Env) -> Size {
         bc.debug_check("Label");
 
-        let font_size = self.size.resolve(env);
-        let text_layout = self.get_layout(&mut ctx.text(), env);
+        let text_layout = self.get_layout(&mut ctx.text(), bc.max().width, env);
         bc.constrain(Size::new(
-            text_layout.width() + 2. * LABEL_X_PADDING,
-            font_size * LINE_HEIGHT_FACTOR,
+            text_layout.size().width,
+            text_layout.size().height,
         ))
     }
 
     fn paint(&mut self, ctx: &mut PaintCtx, _data: &T, env: &Env) {
-        let font_size = self.size.resolve(env);
-        let text_layout = self.get_layout(&mut ctx.text(), env);
-        let line_height = font_size * LINE_HEIGHT_FACTOR;
+        let text_layout = self.get_layout(&mut ctx.text(), ctx.size().width, env);
 
-        // Find the origin for the text
-        let origin = Point::new(LABEL_X_PADDING, line_height * BASELINE_GUESS_FACTOR);
-        let color = self.color.resolve(env);
-
-        ctx.draw_text(&text_layout, origin, &color);
+        ctx.draw_text(&text_layout, Point::ORIGIN);
     }
 }
 
